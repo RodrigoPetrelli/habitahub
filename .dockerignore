@@ -1,0 +1,5 @@
+.git
+*.pdf
+*.odt
+README.md
+docker-compose.yml

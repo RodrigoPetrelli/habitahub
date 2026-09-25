@@ -1,0 +1,52 @@
+/* Estilos da fatia proposta (UC07, UC08). Prefira as classes de base.css. */
+.pp-ref { display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--surface-2); border-radius: 8px; margin-bottom: 14px; }
+.pp-money { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.pp-money span { padding: 0 10px; color: var(--muted); font-weight: 600; }
+.pp-money .input { border: 0; border-left: 1px solid var(--border); border-radius: 0; }
+.pp-money:focus-within { border-color: var(--primary); }
+
+.pp-diff { display: inline-block; font-size: 12px; font-weight: 600; color: var(--muted); }
+.pp-diff.neg { color: var(--danger); }
+.pp-diff.pos { color: var(--ok); }
+.pp-nowrap { white-space: nowrap; }
+.pp-table td { vertical-align: top; }
+
+.pp-list { display: grid; gap: 16px; }
+.pp-list .card + .card { margin-top: 0; }
+.pp-card-head { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.pp-grow { flex: 1; min-width: 0; }
+.pp-meta { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-bottom: 12px; }
+.pp-hist { margin: 8px 0 12px; }
+.pp-hist summary { cursor: pointer; font-weight: 600; color: var(--primary); margin-bottom: 8px; }
+.pp-timeline li { padding-bottom: 10px; }
+
+.pp-status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+
+.pp-opcoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 14px; }
+.pp-opcoes label { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.pp-opcoes label:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.pp-foot { margin: 14px -20px -18px; }
+.pp-taxa { color: var(--primary); font-size: 16px; }
+
+.pp-pix { display: flex; gap: 16px; align-items: flex-start; }
+.pp-qr { width: 180px; height: 180px; flex: none; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.pp-pix-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.pp-copia { font-family: Consolas, monospace; font-size: 11px; min-height: 70px; word-break: break-all; }
+.pp-status { margin: 4px 0 0; display: flex; gap: 8px; align-items: center; width: 100%; }
+
+.pp-comprovante { border: 1px dashed var(--ok); border-radius: 8px; padding: 12px 14px; background: var(--ok-soft); margin-bottom: 12px; }
+.pp-comprovante dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; }
+.pp-comprovante dt { color: var(--muted); font-size: 12px; }
+.pp-comprovante dd { margin: 0; }
+
+.pp-carta-img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+.pp-carta-frame { width: 100%; height: 60vh; border: 1px solid var(--border); border-radius: 8px; }
+
+.pp-owner-item { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+.pp-owner-item .timeline { margin-top: 8px; }
+.pp-melhor { border-color: var(--primary); background: var(--primary-soft); }
+
+@media (max-width: 600px) {
+  .pp-pix { flex-direction: column; align-items: center; }
+  .pp-opcoes { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,55 @@
+/* Estilos da fatia visita (UC04 + UC11). Prefixo .vis- para não colidir com outras fatias. */
+
+.vis-imovel { margin-bottom: 14px; flex-wrap: nowrap; }
+.vis-nota { display: inline-block; margin-left: 8px; }
+.vis-sim { margin-top: 4px; }
+
+/* Seletor de horários */
+.vis-dias { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.vis-dia-chip { flex: none; min-width: 74px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font: inherit; color: var(--text); cursor: pointer; }
+.vis-dia-chip span { font-size: 11px; text-transform: capitalize; color: var(--muted); }
+.vis-dia-chip small { font-size: 10px; color: var(--muted); }
+.vis-dia-chip:hover:not(:disabled) { background: var(--surface-2); }
+.vis-dia-chip.active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.vis-dia-chip:disabled { opacity: .45; cursor: not-allowed; }
+.vis-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.vis-slot { padding: 8px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font: inherit; font-weight: 600; color: var(--text); cursor: pointer; }
+.vis-slot:hover { border-color: var(--primary); }
+.vis-slot.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.vis-resumo { padding: 8px 12px; border-radius: 8px; background: var(--surface-2); margin-bottom: 12px; }
+
+/* Estrelas clicáveis (UC11) */
+.vis-stars { display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 8px; border: 1px solid transparent; width: fit-content; }
+.vis-stars.invalid { border-color: var(--danger); background: var(--danger-soft); }
+.vis-star { background: none; border: 0; padding: 0 2px; font-size: 28px; line-height: 1; color: var(--border); cursor: pointer; }
+.vis-star.on { color: #e3a008; }
+.vis-star:hover, .vis-star:focus-visible { transform: scale(1.12); outline: none; }
+.vis-stars [data-vis-stars-label] { margin-left: 8px; }
+
+/* Agenda */
+.vis-filtro { min-width: 180px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.vis-filtro label { font-weight: 600; font-size: 13px; }
+.vis-secao { margin: 24px 0 12px; }
+.vis-dia + .vis-dia { margin-top: 12px; }
+.vis-hoje { border-color: var(--primary); }
+.vis-item { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); align-items: start; }
+.card-title + .vis-item { border-top: 0; }
+.vis-hora { font-weight: 700; font-size: 16px; color: var(--primary); }
+.vis-info > * + * { margin-top: 4px; }
+.vis-acoes { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.vis-cancelada .vis-hora, .vis-cancelada .vis-info strong { color: var(--muted); text-decoration: line-through; }
+.vis-kpi-alerta { border-color: var(--warn); background: var(--warn-soft); }
+
+/* Feedback do corretor em destaque */
+.vis-feedback { margin-top: 6px; padding: 8px 12px; border-left: 3px solid var(--primary); background: var(--primary-soft); border-radius: 0 8px 8px 0; }
+.vis-feedback.pendente { border-left-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+
+.vis-coment { max-width: 320px; }
+.vis-cell-imovel { flex-wrap: nowrap; align-items: flex-start; }
+.vis-prop-media { display: flex; align-items: center; gap: 6px; }
+.vis-detalhes th { width: 130px; }
+
+@media (max-width: 700px) {
+  .vis-item { grid-template-columns: 48px 1fr; }
+  .vis-acoes { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
+}

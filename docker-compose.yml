@@ -1,0 +1,8 @@
+services:
+  habitahub:
+    build: .
+    image: habitahub-prototipo
+    container_name: habitahub
+    ports:
+      - "3100:80"
+    restart: unless-stopped

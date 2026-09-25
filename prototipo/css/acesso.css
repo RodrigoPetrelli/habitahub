@@ -1,0 +1,82 @@
+/* Estilos da fatia acesso (login, cadastro, perfil). Complementa base.css. */
+.acesso-wide { width: 100%; max-width: 780px; }
+.acesso-brand { text-align: center; margin-bottom: 16px; }
+.acesso-brand .logo { justify-content: center; font-size: 26px; }
+.acesso-brand .logo svg { width: 34px; height: 34px; }
+.acesso-brand p { margin: 4px 0 0; }
+.acesso-center { text-align: center; }
+.acesso-block { width: 100%; }
+.acesso-scope h3 { margin-top: 8px; }
+
+.acesso-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 16px 0; }
+.acesso-divider::before, .acesso-divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+
+.acesso-social { display: grid; gap: 8px; margin-bottom: 12px; }
+.acesso-social-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.acesso-g { font-weight: 800; font-size: 15px; background: conic-gradient(from -45deg, #ea4335 0 25%, #fbbc05 0 50%, #34a853 0 75%, #4285f4 0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.acesso-apple { width: 16px; height: 16px; }
+.acesso-btn-apple { background: #111; border-color: #111; color: #fff; }
+.acesso-btn-apple:hover { background: #333; }
+
+.acesso-demos { list-style: none; margin: 0; padding: 0; }
+.acesso-demos li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.acesso-demos li:last-child { border-bottom: 0; }
+.acesso-demo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.acesso-demo-info .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Grades de formulário */
+.acesso-grid { gap: 0 16px; }
+.acesso-span2 { grid-column: span 2; }
+.acesso-span-all { grid-column: 1 / -1; }
+.acesso-actions { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+.acesso-tipos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.acesso-tipo { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--border); border-radius: 8px; padding: 10px; cursor: pointer; }
+.acesso-tipo > span { display: flex; flex-direction: column; gap: 2px; }
+.acesso-tipo:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+
+.acesso-pass { position: relative; }
+.acesso-pass .input { padding-right: 76px; }
+.acesso-pass .btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+
+.acesso-locked, select.input.acesso-locked:disabled { background: var(--surface-2); color: var(--muted); opacity: 1; cursor: default; }
+
+.acesso-st-ok { color: var(--ok) !important; }
+.acesso-st-warn { color: var(--warn) !important; }
+.acesso-st-erro { color: var(--danger) !important; }
+.acesso-spin { width: 11px; height: 11px; vertical-align: -1px; }
+
+/* Indicador de força da senha */
+.acesso-meter { margin: -4px 0 12px; }
+.acesso-meter-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 4px; }
+.acesso-meter-bar span { height: 6px; border-radius: 3px; background: var(--border); }
+.acesso-meter[data-nivel="1"] .acesso-meter-bar span:nth-child(-n+1) { background: var(--danger); }
+.acesso-meter[data-nivel="2"] .acesso-meter-bar span:nth-child(-n+2) { background: var(--warn); }
+.acesso-meter[data-nivel="3"] .acesso-meter-bar span { background: var(--ok); }
+.acesso-meter[data-nivel="1"] [data-meter-label] { color: var(--danger); }
+.acesso-meter[data-nivel="3"] [data-meter-label] { color: var(--ok); }
+.acesso-reqs { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); }
+.acesso-reqs li::before { content: "○ "; }
+.acesso-reqs li.ok { color: var(--ok); }
+.acesso-reqs li.ok::before { content: "✓ "; }
+
+/* Perfil */
+.acesso-perfil { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; align-items: start; }
+.acesso-perfil .card + .card { margin-top: 0; }
+.acesso-avatar-xl { width: 112px; height: 112px; margin: 0 auto; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; font-size: 38px; font-weight: 700; overflow: hidden; border: 3px solid var(--surface); box-shadow: var(--shadow); }
+.acesso-avatar-xl img { width: 100%; height: 100%; object-fit: cover; }
+.acesso-dl { margin: 16px 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 13px; }
+.acesso-dl dt { color: var(--muted); }
+.acesso-dl dd { margin: 0; word-break: break-word; }
+.acesso-foto { border-top: 1px solid var(--border); padding-top: 12px; }
+.acesso-foto .hint { margin-top: 6px; }
+
+.acesso-welcome { text-align: center; }
+.acesso-welcome .logo { justify-content: center; margin-bottom: 8px; }
+.acesso-welcome .logo svg { width: 48px; height: 48px; }
+
+@media (max-width: 900px) {
+  .acesso-perfil { grid-template-columns: 1fr; }
+  .acesso-tipos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .acesso-span2 { grid-column: auto; }
+}
