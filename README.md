@@ -1,6 +1,6 @@
 # HabitaHub – Plataforma Imobiliária
 
-Projeto Extensionista da disciplina **Medição e Análise de Processos e Produtos de Software**.
+Projeto para fins educacionais.
 
 **Equipe:** Erik Carvalho, Luiz Eduardo Assi, Rodrigo Glir
 **Instituição parceira:** Lana Mayan – Negócios Imobiliários Ltda (Curitiba – PR)
@@ -13,12 +13,6 @@ O HabitaHub é uma plataforma web dupla:
 - **Área logada para proprietários**, que acompanham o status dos seus imóveis (visitas, propostas e feedbacks).
 
 O objetivo é reduzir a ansiedade dos proprietários com um canal de feedback contínuo e diminuir o trabalho manual dos corretores.
-
-## Documentos
-
-| Arquivo | Conteúdo |
-|---|---|
-| `PROJETO MEDIÇÃO DE SOFTWARE - HABITAHUB.odt` | Medição do software: atores, casos de uso, UCP, pontos de função e estimativas |
 
 ## Resumo das medições
 
