@@ -2,7 +2,7 @@ const Repositorio = require('./Repositorio');
 const Imovel = require('../modelos/Imovel');
 const { ValidadorImovel } = require('../validacao/validadores');
 const { Notificador } = require('../estrategias/notificacao');
-const { ErroRegraNegocio } = require('../infra/erros');
+const { ErroRegraNegocio, ErroValidacao } = require('../infra/erros');
 const CorretorRepositorio = require('./CorretorRepositorio');
 const ProprietarioRepositorio = require('./ProprietarioRepositorio');
 
@@ -22,6 +22,11 @@ class ImovelRepositorio extends Repositorio {
   }
 
   async antesDeSalvar(imovel, anterior) {
+    // Um imóvel novo ainda não tem negócio: "Reservado" vem de uma proposta
+    // aprovada, e "Vendido"/"Alugado", do fechamento do negócio.
+    if (!anterior && !Imovel.STATUS_INICIAIS.includes(imovel.status)) {
+      throw new ErroValidacao({ status: `Um imóvel novo começa como ${Imovel.STATUS_INICIAIS.map((s) => `"${s}"`).join(' ou ')}.` });
+    }
     const corretor = await new CorretorRepositorio().buscarPorId(imovel.corretorId);
     if (!corretor) throw new ErroRegraNegocio('Corretor não encontrado.');
     if (!corretor.podeAtenderImoveis() && (!anterior || anterior.corretorId !== imovel.corretorId)) {

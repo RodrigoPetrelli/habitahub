@@ -16,7 +16,8 @@ export default {
     { nome: 'tipo', rotulo: 'Tipo', tipo: 'select', largura: 'terco', opcoes: ['Apartamento', 'Casa', 'Terreno', 'Sala comercial'] },
     // Ponto de variação VP3: só aparecem as modalidades do produto ativo.
     { nome: 'finalidade', rotulo: 'Finalidade', tipo: 'select', largura: 'terco', opcoes: (produto) => produto.features.modalidades },
-    { nome: 'status', rotulo: 'Status', tipo: 'select', largura: 'terco', opcoes: STATUS, padrao: 'Disponível' },
+    // Só na edição: o imóvel novo nasce "Disponível" e a reserva vem da proposta aprovada.
+    { nome: 'status', rotulo: 'Status', tipo: 'select', largura: 'terco', opcoes: STATUS, soNaEdicao: true },
     { nome: 'preco', rotulo: 'Preço (R$)', tipo: 'number', largura: 'terco', dica: 'Na locação, valor do aluguel mensal.' },
     { nome: 'area', rotulo: 'Área (m²)', tipo: 'number', largura: 'terco' },
     { nome: 'quartos', rotulo: 'Quartos', tipo: 'number', largura: 'terco' },

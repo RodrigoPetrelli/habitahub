@@ -89,6 +89,9 @@ class ValidadorImovel extends Validador {
     if (dados.quartos && !(Number.isInteger(Number(dados.quartos)) && Number(dados.quartos) >= 0)) erros.quartos = 'Quartos deve ser um número inteiro.';
     if (dados.cep && dados.cep.length !== 8) erros.cep = 'CEP deve ter 8 dígitos.';
     if (dados.uf && !/^[A-Z]{2}$/.test(dados.uf)) erros.uf = 'UF com 2 letras.';
+    // O negócio fechado tem de combinar com a finalidade do imóvel.
+    if (dados.status === 'Vendido' && dados.finalidade !== 'Venda') erros.status = '"Vendido" só vale para imóvel à venda.';
+    if (dados.status === 'Alugado' && dados.finalidade !== 'Locação') erros.status = '"Alugado" só vale para imóvel para locação.';
   }
 }
 

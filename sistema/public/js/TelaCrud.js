@@ -8,7 +8,7 @@ import { api, el, avisar, abrirModal, confirmar } from './util.js';
 // definicao = {
 //   titulo, recurso, descricao,
 //   fontes:  { imoveis: (i) => rótulo }      cadastros usados em selects e colunas
-//   campos:  [{ nome, rotulo, tipo, opcoes, fonte, largura, dica, padrao, autocompletar, soAdministrador }]
+//   campos:  [{ nome, rotulo, tipo, opcoes, fonte, largura, dica, padrao, autocompletar, soAdministrador, soNaEdicao }]
 //   colunas: [{ rotulo, valor: (registro, tela) => texto ou nó, classe }]
 //   permissoes: { criar(usuario), editar(registro, usuario), excluir(registro, usuario) }  opcional;
 //               sem ela, tudo é permitido (o servidor confere de novo)
@@ -127,14 +127,15 @@ export class TelaCrud {
       el('span', { class: 'error-msg' }));
   }
 
-  // Campos marcados como soAdministrador nem aparecem para os outros usuários.
-  get #camposVisiveis() {
-    return this.def.campos.filter((c) => !c.soAdministrador || this.usuario?.administrador);
+  // Campos marcados como soAdministrador nem aparecem para os outros usuários;
+  // os marcados como soNaEdicao não aparecem no cadastro de um registro novo.
+  #camposVisiveis(novo) {
+    return this.def.campos.filter((c) => (!c.soAdministrador || this.usuario?.administrador) && (!c.soNaEdicao || !novo));
   }
 
-  #lerFormulario(form) {
+  #lerFormulario(form, novo) {
     const dados = {};
-    for (const campo of this.#camposVisiveis) {
+    for (const campo of this.#camposVisiveis(novo)) {
       const entrada = form.elements[campo.nome];
       if (campo.tipo === 'checkbox') dados[campo.nome] = entrada.checked;
       else if (campo.tipo === 'number' || campo.fonte) dados[campo.nome] = entrada.value === '' ? '' : Number(entrada.value);
@@ -148,8 +149,8 @@ export class TelaCrud {
     const erroGeral = el('div', { class: 'alert danger hidden', role: 'alert' });
     const { caixa: form } = abrirModal({
       titulo: novo ? `Novo cadastro – ${this.def.titulo}` : `Editar – ${this.def.titulo}`,
-      largo: this.#camposVisiveis.length > 6,
-      corpo: [erroGeral, el('div', { class: 'form-grid' }, this.#camposVisiveis.map((c) => this.#criarCampo(c, novo ? c.padrao : registro[c.nome])))],
+      largo: this.#camposVisiveis(novo).length > 6,
+      corpo: [erroGeral, el('div', { class: 'form-grid' }, this.#camposVisiveis(novo).map((c) => this.#criarCampo(c, novo ? c.padrao : registro[c.nome])))],
       rodape: (fechar) => [
         el('button', { type: 'button', class: 'btn', onclick: fechar }, 'Cancelar'),
         el('button', { type: 'submit', class: 'btn btn-primary' }, novo ? 'Cadastrar' : 'Salvar alterações'),
@@ -160,7 +161,7 @@ export class TelaCrud {
         const botao = form.querySelector('[type=submit]');
         botao.disabled = true;
         try {
-          const dados = this.#lerFormulario(form);
+          const dados = this.#lerFormulario(form, novo);
           if (novo) await api('POST', `/api/${this.def.recurso}`, dados);
           else await api('PUT', `/api/${this.def.recurso}/${registro.id}`, dados);
           fechar();

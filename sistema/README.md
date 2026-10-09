@@ -39,7 +39,7 @@ cd sistema
 npm install
 npm start                 # produto "lana-mayan" em http://localhost:3200
 npm run start:autonomo    # produto "corretor-autonomo" (use --porta=3201 para rodar os dois)
-npm test                  # 18 testes automatizados (SQLite em memória)
+npm test                  # 19 testes automatizados (SQLite em memória)
 npm run build             # compacta o front-end em dist/ (npm run start:dist já serve essa versão)
 npm run medir-reuso       # tabela de economia de código por reuso
 ```
@@ -117,7 +117,7 @@ Todas as telas listam, criam, editam e excluem registros direto no banco. Elas r
 
 Regras de negócio que aparecem nas telas:
 - **Validação:** CPF com dígito verificador, e-mail, CRECI no formato `12345-F/PR`, UF e CEP.
-- **Imóvel:** o código `HH-0001` é gerado ao salvar, o endereço é preenchido pelo ViaCEP e o corretor precisa estar ativo.
+- **Imóvel:** o código `HH-0001` é gerado ao salvar, o endereço é preenchido pelo ViaCEP e o corretor precisa estar ativo. Um imóvel novo começa como "Disponível" (ou "Inativo"), e o campo Status só aparece na edição. "Vendido" só vale para imóvel à venda, e "Alugado", para locação.
 - **Exclusão:** é bloqueada quando o registro está em uso. Um proprietário com imóveis não pode ser excluído, por exemplo.
 - **Propostas:** uma proposta aprovada reserva o imóvel, e a tela mostra a comissão estimada.
 - **Visitas:** visita realizada exige feedback e envia esse feedback ao proprietário.

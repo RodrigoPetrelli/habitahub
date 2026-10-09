@@ -4,6 +4,7 @@ const numeroOuNulo = (v) => (v == null || v === '' ? null : Number(v));
 
 class Imovel {
   static STATUS = ['Disponível', 'Reservado', 'Vendido', 'Alugado', 'Inativo'];
+  static STATUS_INICIAIS = ['Disponível', 'Inativo'];
   static TIPOS = ['Apartamento', 'Casa', 'Terreno', 'Sala comercial'];
 
   constructor(dados = {}) {

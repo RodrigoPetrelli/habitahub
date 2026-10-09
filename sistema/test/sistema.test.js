@@ -288,3 +288,15 @@ test('Administrador: sem nenhum ativo, o corretor ativo mais antigo é promovido
   assert.equal(promovido.id, Math.min(...(await repo.listar()).filter((c) => c.ativo).map((c) => c.id)));
   assert.equal((await repo.administradoresAtivos()).length, 1);
 });
+
+test('Imóvel: novo nasce sem negócio e o status fechado combina com a finalidade', async () => {
+  const repo = new ImovelRepositorio();
+  const base = { titulo: 'Status Teste', tipo: 'Casa', finalidade: 'Venda', preco: 300000, cidade: 'Curitiba', uf: 'PR', proprietarioId: 1, corretorId: 1 };
+  await assert.rejects(repo.salvar({ ...base, status: 'Vendido' }), (e) => e instanceof ErroValidacao && /imóvel novo/.test(e.erros.status));
+  await assert.rejects(repo.salvar({ ...base, status: 'Reservado' }), ErroValidacao);
+
+  const imovel = await repo.salvar(base);
+  assert.equal(imovel.status, 'Disponível');
+  await assert.rejects(repo.salvar({ status: 'Alugado' }, imovel.id), (e) => /só vale para imóvel para locação/.test(e.erros.status));
+  assert.equal((await repo.salvar({ status: 'Vendido' }, imovel.id)).status, 'Vendido', 'na edição, fechar a venda é permitido');
+});
