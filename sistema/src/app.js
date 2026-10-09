@@ -5,8 +5,9 @@ const http = require('node:http');
 const Configuracao = require('./infra/Configuracao');
 const Database = require('./infra/Database');
 const { ErroAplicacao, ErroValidacao } = require('./infra/erros');
-const { popularSeVazio, garantirAcessoDeDemonstracao } = require('./infra/seed');
+const { popularSeVazio, garantirAcessoDeDemonstracao, garantirAdministrador } = require('./infra/seed');
 const { Autenticacao, DURACAO_SESSAO } = require('./seguranca/Autenticacao');
+const AutorizacaoCorretores = require('./seguranca/AutorizacaoCorretores');
 const Roteador = require('./http/Roteador');
 const CrudControlador = require('./http/CrudControlador');
 const CorretorRepositorio = require('./repositorios/CorretorRepositorio');
@@ -106,8 +107,10 @@ function montarRotas(autenticacao) {
     relatorios.propostas = RelatorioPropostas;
   }
 
+  // Só os corretores têm regras de permissão (perfil de administrador).
+  const autorizacoes = { corretores: new AutorizacaoCorretores() };
   for (const [recurso, Repo] of Object.entries(recursos)) {
-    new CrudControlador(new Repo()).registrar(roteador, recurso);
+    new CrudControlador(new Repo(), autorizacoes[recurso]).registrar(roteador, recurso);
   }
 
   roteador.get('/api/produto', () => ({ status: 200, corpo: config.paraCliente() }));
@@ -173,6 +176,7 @@ async function criarAplicacao({ produto, banco, front = 'public' }) {
   await Database.instancia().conectar(banco);
   await popularSeVazio();
   await garantirAcessoDeDemonstracao();
+  await garantirAdministrador();
 
   const autenticacao = new Autenticacao();
   const roteador = montarRotas(autenticacao);

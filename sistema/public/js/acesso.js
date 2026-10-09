@@ -7,8 +7,8 @@ const LOGO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 
 // Corretores criados pelo seed (src/infra/seed.js), com a senha demo1234.
 const CONTAS_DEMO = [
-  { nome: 'Carla Mendes', email: 'carla@habitahub.demo' },
-  { nome: 'Rafael Costa', email: 'rafael@habitahub.demo' },
+  { nome: 'Carla Mendes', perfil: 'Administrador', email: 'carla@habitahub.demo' },
+  { nome: 'Rafael Costa', perfil: 'Corretor', email: 'rafael@habitahub.demo' },
 ];
 
 // ---------- Peças comuns ----------
@@ -97,7 +97,7 @@ export function montarLogin(container, { produto, aviso, sucesso, aoEntrar }) {
       el('h3', {}, 'Contas de demonstração'),
       el('p', { class: 'small muted' }, 'Senha de todas: demo1234'),
       el('ul', { class: 'acesso-demos' }, CONTAS_DEMO.map((c) => el('li', {},
-        el('span', { class: 'info' }, el('strong', {}, c.nome), el('span', { class: 'small muted' }, c.email)),
+        el('span', { class: 'info' }, el('strong', {}, c.nome, ' ', el('span', { class: 'badge' }, c.perfil)), el('span', { class: 'small muted' }, c.email)),
         el('button', { type: 'button', class: 'btn btn-sm', onclick: () => usarConta(c) }, 'Usar')))))));
   email.focus();
 }
@@ -197,7 +197,7 @@ export function montarCadastro(container, { produto, aoConcluir }) {
     marca(produto),
     el('div', { class: 'card' },
       el('h2', {}, 'Criar conta de corretor'),
-      el('p', { class: 'muted' }, 'Depois do envio, um corretor da equipe precisa aprovar o seu cadastro. Você vai receber um aviso quando o acesso for liberado.'),
+      el('p', { class: 'muted' }, 'Depois do envio, um administrador da imobiliária precisa aprovar o seu cadastro. Você vai receber um aviso quando o acesso for liberado.'),
       form),
     el('p', { class: 'acesso-center' }, 'Já tem conta? ', el('a', { href: '#/login' }, 'Entrar'))));
   form.elements.nome.focus();

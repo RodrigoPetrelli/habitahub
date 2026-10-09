@@ -35,9 +35,9 @@ class CorretorRepositorio extends Repositorio {
   }
 
   // Tela pública "Criar conta": o corretor nasce inativo, aguardando aprovação,
-  // e os corretores ativos são avisados para aprovar. Aqui a senha é obrigatória.
+  // e os administradores são avisados para aprovar. Aqui a senha é obrigatória.
   async criarConta({ nome, email, telefone, creci, senha }) {
-    const dados = { nome, email, telefone, creci, senha, ativo: false, aguardandoAprovacao: true };
+    const dados = { nome, email, telefone, creci, senha, ativo: false, administrador: false, aguardandoAprovacao: true };
     const { erros } = this.validador().validar(dados);
     if (!senha) erros.senha = 'Senha é obrigatória.';
     if (Object.keys(erros).length) throw new ErroValidacao(erros);
@@ -45,11 +45,15 @@ class CorretorRepositorio extends Repositorio {
     return this.db.transacao(async () => {
       const novo = await this.salvar(dados);
       const notificador = Notificador.doProduto();
-      for (const aprovador of (await this.listar()).filter((c) => c.ativo)) {
-        await notificador.enviar(aprovador, `${novo.nome} (CRECI ${novo.creci}) criou uma conta e aguarda aprovação. Para liberar o acesso, marque "Corretor ativo" na tela Corretores.`);
+      for (const administrador of await this.administradoresAtivos()) {
+        await notificador.enviar(administrador, `${novo.nome} (CRECI ${novo.creci}) criou uma conta e aguarda aprovação. Para liberar o acesso, marque "Corretor ativo" na tela Corretores.`);
       }
       return novo;
     });
+  }
+
+  async administradoresAtivos() {
+    return (await this.listar()).filter((c) => c.ativo && c.administrador);
   }
 
   // Aprovação = primeira ativação de uma conta criada pela tela pública.
@@ -69,9 +73,9 @@ class CorretorRepositorio extends Repositorio {
   }
 
   async #credenciais(condicao, valor) {
-    const l = await this.db.um(`SELECT id, nome, email, ativo, aguardando_aprovacao, senha_hash FROM corretores WHERE ${condicao}`, [valor]);
+    const l = await this.db.um(`SELECT id, nome, email, ativo, administrador, aguardando_aprovacao, senha_hash FROM corretores WHERE ${condicao}`, [valor]);
     return l ? {
-      id: l.id, nome: l.nome, email: l.email, ativo: Boolean(Number(l.ativo)),
+      id: l.id, nome: l.nome, email: l.email, ativo: Boolean(Number(l.ativo)), administrador: Boolean(Number(l.administrador)),
       aguardandoAprovacao: Boolean(Number(l.aguardando_aprovacao)), senhaHash: l.senha_hash,
     } : null;
   }

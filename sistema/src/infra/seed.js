@@ -36,7 +36,7 @@ async function popularSeVazio() {
   const config = Configuracao.instancia();
   const locacao = config.opcoes('modalidades').includes('Locação');
 
-  const carla = await corretores.salvar({ nome: 'Carla Mendes', email: 'carla@habitahub.demo', telefone: '(41) 99876-1001', creci: '12345-F/PR', ativo: true, senha: SENHA_DEMO });
+  const carla = await corretores.salvar({ nome: 'Carla Mendes', email: 'carla@habitahub.demo', telefone: '(41) 99876-1001', creci: '12345-F/PR', ativo: true, administrador: true, senha: SENHA_DEMO });
   const rafael = await corretores.salvar({ nome: 'Rafael Costa', email: 'rafael@habitahub.demo', telefone: '(41) 99876-1002', creci: '23456-F/PR', ativo: true, senha: SENHA_DEMO });
 
   const proprietarios = new ProprietarioRepositorio();
@@ -89,4 +89,16 @@ async function garantirAcessoDeDemonstracao() {
   return semSenha.length;
 }
 
-module.exports = { popularSeVazio, garantirAcessoDeDemonstracao, SENHA_DEMO };
+// Sem nenhum administrador ativo, ninguém aprovaria contas novas: o corretor
+// ativo mais antigo vira administrador (no banco de demonstração, a Carla).
+async function garantirAdministrador() {
+  const corretores = new CorretorRepositorio();
+  if ((await corretores.administradoresAtivos()).length) return null;
+  const [maisAntigo] = (await corretores.listar()).filter((c) => c.ativo).sort((a, b) => a.id - b.id);
+  if (!maisAntigo) return null;
+  await corretores.salvar({ administrador: true }, maisAntigo.id);
+  console.log(`Nenhum administrador ativo: ${maisAntigo.nome} (${maisAntigo.email}) virou administrador.`);
+  return maisAntigo;
+}
+
+module.exports = { popularSeVazio, garantirAcessoDeDemonstracao, garantirAdministrador, SENHA_DEMO };

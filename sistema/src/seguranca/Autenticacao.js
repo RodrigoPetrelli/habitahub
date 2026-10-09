@@ -40,7 +40,7 @@ class Autenticacao {
       this.#registrarFalha(chave);
       throw new ErroAplicacao(LOGIN_INVALIDO, 401);
     }
-    if (credenciais.aguardandoAprovacao) throw new ErroAplicacao('Seu cadastro está aguardando aprovação. Você vai receber um aviso quando o acesso for liberado.', 403);
+    if (credenciais.aguardandoAprovacao) throw new ErroAplicacao('Seu cadastro está aguardando a aprovação de um administrador. Você vai receber um aviso quando o acesso for liberado.', 403);
     if (!credenciais.ativo) throw new ErroAplicacao('Seu acesso está desativado. Fale com a administração da imobiliária.', 403);
 
     this.#falhas.delete(chave);
@@ -62,7 +62,7 @@ class Autenticacao {
       this.#sessoes.delete(token);
       return null;
     }
-    return { id: corretor.id, nome: corretor.nome, email: corretor.email };
+    return { id: corretor.id, nome: corretor.nome, email: corretor.email, administrador: corretor.administrador };
   }
 
   #verificarBloqueio(chave) {

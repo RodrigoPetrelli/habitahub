@@ -44,6 +44,7 @@ class Database {
     const colunas = [
       ['corretores', 'senha_hash', 'TEXT'],
       ['corretores', 'aguardando_aprovacao', 'INTEGER NOT NULL DEFAULT 0'],
+      ['corretores', 'administrador', 'INTEGER NOT NULL DEFAULT 0'],
     ];
     for (const [tabela, coluna, tipo] of colunas) {
       try {

@@ -8,14 +8,17 @@ import { api, el, avisar, abrirModal, confirmar } from './util.js';
 // definicao = {
 //   titulo, recurso, descricao,
 //   fontes:  { imoveis: (i) => rótulo }      cadastros usados em selects e colunas
-//   campos:  [{ nome, rotulo, tipo, opcoes, fonte, largura, dica, padrao, autocompletar }]
+//   campos:  [{ nome, rotulo, tipo, opcoes, fonte, largura, dica, padrao, autocompletar, soAdministrador }]
 //   colunas: [{ rotulo, valor: (registro, tela) => texto ou nó, classe }]
+//   permissoes: { criar(usuario), editar(registro, usuario), excluir(registro, usuario) }  opcional;
+//               sem ela, tudo é permitido (o servidor confere de novo)
 //   aoAbrirFormulario(form, registro, tela)  gancho opcional
 // }
 export class TelaCrud {
-  constructor(definicao, produto) {
+  constructor(definicao, produto, usuario) {
     this.def = definicao;
     this.produto = produto;
+    this.usuario = usuario;
     this.fontes = {};
     this.registros = [];
     this.busca = '';
@@ -46,13 +49,18 @@ export class TelaCrud {
     return item ? f.rotulo(item) : '—';
   }
 
+  #pode(acao, registro) {
+    const regra = this.def.permissoes?.[acao];
+    return !regra || (acao === 'criar' ? regra(this.usuario) : regra(registro, this.usuario));
+  }
+
   #renderizar() {
     const { titulo, descricao, colunas } = this.def;
     const linhas = this.registros.map((r) => el('tr', {},
       colunas.map((c) => el('td', { class: c.classe || null }, c.valor(r, this) ?? '')),
       el('td', { class: 'acoes-linha' },
-        el('button', { class: 'btn btn-sm', onclick: () => this.abrirFormulario(r) }, 'Editar'), ' ',
-        el('button', { class: 'btn btn-sm btn-ghost perigo', onclick: () => this.excluir(r) }, 'Excluir')),
+        this.#pode('editar', r) ? el('button', { class: 'btn btn-sm', onclick: () => this.abrirFormulario(r) }, 'Editar') : null, ' ',
+        this.#pode('excluir', r) ? el('button', { class: 'btn btn-sm btn-ghost perigo', onclick: () => this.excluir(r) }, 'Excluir') : null),
     ));
 
     const contador = el('span', { class: 'muted small' });
@@ -72,7 +80,7 @@ export class TelaCrud {
     this.container.replaceChildren(
       el('div', { class: 'page-head' },
         el('div', {}, el('h1', {}, titulo), descricao ? el('p', { class: 'sub' }, descricao) : null),
-        el('button', { class: 'btn btn-primary', onclick: () => this.abrirFormulario(null) }, `+ Novo cadastro`)),
+        this.#pode('criar') ? el('button', { class: 'btn btn-primary', onclick: () => this.abrirFormulario(null) }, `+ Novo cadastro`) : null),
       el('div', { class: 'card' },
         el('div', { class: 'row between' },
           el('input', { class: 'input busca', type: 'search', placeholder: `Buscar em ${titulo.toLowerCase()}…`, value: this.busca, 'aria-label': 'Buscar',
@@ -82,7 +90,7 @@ export class TelaCrud {
           ? el('div', { class: 'table-wrap' }, el('table', { class: 'table' },
             el('thead', {}, el('tr', {}, colunas.map((c) => el('th', {}, c.rotulo)), el('th', {}))),
             el('tbody', {}, linhas)))
-          : el('div', { class: 'empty' }, 'Nenhum registro cadastrado. Use "+ Novo cadastro" para começar.'),
+          : el('div', { class: 'empty' }, 'Nenhum registro cadastrado.'),
         semResultado),
     );
     filtrar();
@@ -119,9 +127,14 @@ export class TelaCrud {
       el('span', { class: 'error-msg' }));
   }
 
+  // Campos marcados como soAdministrador nem aparecem para os outros usuários.
+  get #camposVisiveis() {
+    return this.def.campos.filter((c) => !c.soAdministrador || this.usuario?.administrador);
+  }
+
   #lerFormulario(form) {
     const dados = {};
-    for (const campo of this.def.campos) {
+    for (const campo of this.#camposVisiveis) {
       const entrada = form.elements[campo.nome];
       if (campo.tipo === 'checkbox') dados[campo.nome] = entrada.checked;
       else if (campo.tipo === 'number' || campo.fonte) dados[campo.nome] = entrada.value === '' ? '' : Number(entrada.value);
@@ -135,8 +148,8 @@ export class TelaCrud {
     const erroGeral = el('div', { class: 'alert danger hidden', role: 'alert' });
     const { caixa: form } = abrirModal({
       titulo: novo ? `Novo cadastro – ${this.def.titulo}` : `Editar – ${this.def.titulo}`,
-      largo: this.def.campos.length > 6,
-      corpo: [erroGeral, el('div', { class: 'form-grid' }, this.def.campos.map((c) => this.#criarCampo(c, novo ? c.padrao : registro[c.nome])))],
+      largo: this.#camposVisiveis.length > 6,
+      corpo: [erroGeral, el('div', { class: 'form-grid' }, this.#camposVisiveis.map((c) => this.#criarCampo(c, novo ? c.padrao : registro[c.nome])))],
       rodape: (fechar) => [
         el('button', { type: 'button', class: 'btn', onclick: fechar }, 'Cancelar'),
         el('button', { type: 'submit', class: 'btn btn-primary' }, novo ? 'Cadastrar' : 'Salvar alterações'),

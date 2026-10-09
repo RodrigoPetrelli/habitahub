@@ -39,7 +39,7 @@ cd sistema
 npm install
 npm start                 # produto "lana-mayan" em http://localhost:3200
 npm run start:autonomo    # produto "corretor-autonomo" (use --porta=3201 para rodar os dois)
-npm test                  # 16 testes automatizados (SQLite em memória)
+npm test                  # 18 testes automatizados (SQLite em memória)
 npm run build             # compacta o front-end em dist/ (npm run start:dist já serve essa versão)
 npm run medir-reuso       # tabela de economia de código por reuso
 ```
@@ -56,8 +56,8 @@ O passo a passo e os números estão em [`COMPACTACAO.md`](COMPACTACAO.md). São
 
 | Técnica | Comando | Resultado |
 |---|---|---|
-| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 1.027 linhas em vez de cerca de 2.761: 63% menos código |
-| Minificação e empacotamento (esbuild) | `npm run build` | 10 módulos JS viram 1 arquivo, 38% menor. A biblioteca reutilizável `dist/lib/tela-crud.min.js` ficou 47% menor |
+| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 1.054 linhas em vez de cerca de 2.873: 63% menos código |
+| Minificação e empacotamento (esbuild) | `npm run build` | 10 módulos JS viram 1 arquivo, 38% menor. A biblioteca reutilizável `dist/lib/tela-crud.min.js` ficou 48% menor |
 
 O Docker serve a versão compactada (`dist/`).
 
@@ -126,13 +126,28 @@ Regras de negócio que aparecem nas telas:
 ### Login
 
 O sistema só abre depois do login. Quem entra são os **corretores**. Há dois jeitos de ter uma conta:
-- **Criar conta (`#/cadastro`, link na tela de login):** o próprio corretor informa nome, e-mail, telefone, CRECI e senha, com o indicador de força do protótipo. A conta nasce **aguardando aprovação** e não entra no sistema. Os corretores ativos recebem uma notificação, e o Painel mostra um aviso com o botão "Revisar cadastros". Para aprovar, basta editar o corretor e marcar "Corretor ativo". O novo corretor recebe um aviso de que foi aprovado. São aceitas no máximo 5 contas por IP a cada hora.
-- **Cadastro pela equipe:** um corretor logado cria o colega na tela Corretores e define a senha ali.
+- **Criar conta (`#/cadastro`, link na tela de login):** o próprio corretor informa nome, e-mail, telefone, CRECI e senha, com o indicador de força do protótipo. A conta nasce **aguardando aprovação** e não entra no sistema. Os administradores recebem uma notificação, e o Painel deles mostra um aviso com o botão "Revisar cadastros". Para aprovar, o administrador edita o corretor e marca "Corretor ativo". O novo corretor recebe um aviso de que foi aprovado. São aceitas no máximo 5 contas por IP a cada hora.
+- **Cadastro pelo administrador:** o administrador cria o corretor na tela Corretores e define a senha ali.
 
-| Conta de demonstração | E-mail | Senha |
+| Conta de demonstração | Perfil | E-mail | Senha |
+|---|---|---|---|
+| Carla Mendes | Administrador | `carla@habitahub.demo` | `demo1234` |
+| Rafael Costa | Corretor | `rafael@habitahub.demo` | `demo1234` |
+
+**Perfis** (coluna `corretores.administrador`):
+
+| Ação na tela Corretores | Administrador | Corretor |
 |---|---|---|
-| Carla Mendes | `carla@habitahub.demo` | `demo1234` |
-| Rafael Costa | `rafael@habitahub.demo` | `demo1234` |
+| Ver a lista | ✔ | ✔ |
+| Editar os próprios dados e a própria senha | ✔ | ✔ |
+| Aprovar contas novas, ativar e desativar corretores | ✔ | ✘ |
+| Criar, editar e excluir outros corretores | ✔ | ✘ |
+| Dar ou tirar o perfil de administrador | ✔ | ✘ |
+
+- **Onde as regras ficam:** o servidor confere tudo em `src/seguranca/AutorizacaoCorretores.js`, que o `CrudControlador` chama antes de cada ação e que nega com 403. A tela só esconde os botões e os campos que o usuário não pode usar.
+- **Corretor comum não cria corretores:** sem essa regra, ele criaria uma conta já ativa e pularia a aprovação.
+- **Sempre há administrador:** o administrador não pode se desativar, se excluir nem tirar o próprio perfil. Se o banco iniciar sem nenhum administrador ativo, como acontece em bancos criados antes do perfil existir, o corretor ativo mais antigo vira administrador.
+- **Avisos:** só os administradores recebem a notificação de conta nova, e só eles veem o aviso "Revisar cadastros" no Painel.
 
 - **Senha:** fica só como hash scrypt com sal aleatório, na coluna `corretores.senha_hash`, e nunca sai da API. Ela precisa ter 8 ou mais caracteres, com letras e números (a mesma regra do protótipo). No formulário do corretor, deixar a senha em branco mantém a atual. Um corretor sem senha não consegue entrar.
 - **Sessão:** é um token aleatório num cookie `HttpOnly` e `SameSite=Strict`, válido por 8 horas. As sessões ficam na memória do servidor, então reiniciar o servidor pede login de novo.
@@ -140,7 +155,7 @@ O sistema só abre depois do login. Quem entra são os **corretores**. Há dois 
 - **Aguardando aprovação × desativado:** a coluna `corretores.aguardando_aprovacao` separa os dois casos, e cada um tem a sua mensagem no login. A marca some na primeira ativação, então desativar alguém depois não o faz voltar a "aguardando".
 - **Perda do acesso:** a sessão termina na hora se o corretor for desativado ou excluído ou se a senha dele mudar. A tela volta sozinha para o login.
 - **Tentativas erradas:** depois de 5 senhas erradas para o mesmo e-mail, o login fica bloqueado por 5 minutos. A mensagem de erro é a mesma para e-mail inexistente e senha errada.
-- **Bancos antigos:** bancos criados antes do login ganham as colunas `senha_hash` e `aguardando_aprovacao` ao iniciar, e as contas de demonstração recebem a senha `demo1234`.
+- **Bancos antigos:** bancos criados antes do login ganham as colunas `senha_hash`, `aguardando_aprovacao` e `administrador` ao iniciar, e as contas de demonstração recebem a senha `demo1234`.
 - **Código:** `src/seguranca/` (senhas e sessões), rotas de acesso em `src/app.js`, criação de conta em `CorretorRepositorio.criarConta()` e telas de login e de criar conta em `public/js/acesso.js`.
 
 ### Banco de dados (7 tabelas)

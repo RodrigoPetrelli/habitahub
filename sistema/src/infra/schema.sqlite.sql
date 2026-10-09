@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS corretores (
   ativo      INTEGER NOT NULL DEFAULT 1,
   senha_hash TEXT,    -- acesso ao sistema (scrypt); NULL = corretor sem login
   aguardando_aprovacao INTEGER NOT NULL DEFAULT 0, -- 1 = criou a conta e espera aprovação
+  administrador        INTEGER NOT NULL DEFAULT 0, -- 1 = aprova contas e gerencia corretores
   criado_em  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 

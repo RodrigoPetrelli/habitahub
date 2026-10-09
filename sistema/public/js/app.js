@@ -57,7 +57,8 @@ async function telaInicio() {
     .filter((v) => v.status === 'Agendada' && new Date(v.dataHora) > new Date())
     .sort((a, b) => String(a.dataHora).localeCompare(String(b.dataHora)));
   const emAnalise = listaPropostas.filter((p) => p.status === 'Em análise').length;
-  const aguardando = listaCorretores.filter((c) => c.aguardandoAprovacao).length;
+  // Só quem pode aprovar vê o aviso de contas pendentes.
+  const aguardando = usuario.administrador ? listaCorretores.filter((c) => c.aguardandoAprovacao).length : 0;
 
   const linhaFeature = (nome, tipo, valor) => el('tr', {}, el('td', {}, nome), el('td', { class: 'muted' }, tipo), el('td', {}, valor));
   const onOff = (v) => (v ? etiqueta('incluída', 'ok') : etiqueta('não incluída', 'danger'));
@@ -135,7 +136,7 @@ async function navegar() {
   shell.classList.remove('nav-open');
   montarMenu(rota);
   try {
-    if (TELAS[rota] && telaAtiva(TELAS[rota])) await new TelaCrud(TELAS[rota], produto).montar(conteudo);
+    if (TELAS[rota] && telaAtiva(TELAS[rota])) await new TelaCrud(TELAS[rota], produto, usuario).montar(conteudo);
     else if (rota === 'relatorios') telaRelatorios();
     else if (rota === 'notificacoes') await telaNotificacoes();
     else if (TELAS[rota]) conteudo.replaceChildren(cabecalho('Módulo não incluído'), el('div', { class: 'alert info' }, `A feature "${TELAS[rota].feature}" não faz parte do produto ${produto.nome}.`));
@@ -163,7 +164,7 @@ function mostrarAcesso({ aviso, sucesso } = {}) {
       produto,
       aoConcluir: (email) => {
         history.replaceState(null, '', '#/login');
-        mostrarAcesso({ sucesso: `Cadastro enviado para aprovação. Quando um corretor da equipe liberar o acesso, ${email} vai receber um aviso e você poderá entrar.` });
+        mostrarAcesso({ sucesso: `Cadastro enviado para aprovação. Quando um administrador liberar o acesso, ${email} vai receber um aviso e você poderá entrar.` });
       },
     });
   } else {
@@ -179,7 +180,7 @@ async function mostrarSistema(logado) {
   telaLogin.replaceChildren();
   document.getElementById('usuario').replaceChildren(
     el('span', { class: 'avatar' }, iniciais(usuario.nome)),
-    el('span', { class: 'nome' }, el('strong', {}, usuario.nome), el('br'), el('span', { class: 'small muted' }, 'Corretor')));
+    el('span', { class: 'nome' }, el('strong', {}, usuario.nome), el('br'), el('span', { class: 'small muted' }, usuario.administrador ? 'Administrador' : 'Corretor')));
   shell.classList.remove('hidden');
   window.scrollTo(0, 0);
   document.title = `HabitaHub – ${produto.id}`;

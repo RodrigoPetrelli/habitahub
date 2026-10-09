@@ -11,7 +11,7 @@ const { ComissaoVenda, ComissaoLocacao } = require('../src/estrategias/comissao'
 const { CanalEmail, CanalSms, CanalWhatsApp } = require('../src/estrategias/notificacao');
 const { ExportadorCsv, ExportadorJson, exportadorPara } = require('../src/estrategias/exportacao');
 const { RelatorioImoveis } = require('../src/relatorios/relatorios');
-const { popularSeVazio, SENHA_DEMO } = require('../src/infra/seed');
+const { popularSeVazio, garantirAdministrador, SENHA_DEMO } = require('../src/infra/seed');
 const { criarAplicacao } = require('../src/app');
 const { Autenticacao, DURACAO_SESSAO } = require('../src/seguranca/Autenticacao');
 const { gerarHash, conferir } = require('../src/seguranca/senhas');
@@ -188,7 +188,7 @@ test('Criar conta: nasce aguardando aprovação e só entra depois de aprovada',
   assert.ok((await new NotificacaoRepositorio().listar()).some((n) => /Nova Corretora .* aguarda aprovação/.test(n.mensagem)), 'corretores ativos são avisados');
 
   const auth = new Autenticacao();
-  await assert.rejects(auth.entrar('nova@teste.com', 'novaconta1'), { status: 403, message: /aguardando aprovação/ });
+  await assert.rejects(auth.entrar('nova@teste.com', 'novaconta1'), { status: 403, message: /aguardando a aprovação de um administrador/ });
 
   const aprovada = await repo.salvar({ ativo: true }, novo.id);
   assert.equal(aprovada.aguardandoAprovacao, false);
@@ -235,4 +235,56 @@ test('HTTP: a API exige login e o cookie de sessão é HttpOnly', async () => {
   } finally {
     servidor.close();
   }
+});
+
+// ---------- Perfil de administrador ----------
+
+test('Administrador: só ele aprova e gerencia corretores; o comum edita só o próprio cadastro', async () => {
+  const servidor = await criarAplicacao({ produto: 'lana-mayan', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
+  await new Promise((r) => servidor.listen(0, r));
+  const base = `http://localhost:${servidor.address().port}`;
+  const entrar = async (email) => {
+    const r = await fetch(`${base}/api/login`, { method: 'POST', body: JSON.stringify({ email, senha: SENHA_DEMO }) });
+    const cookie = r.headers.get('set-cookie').split(';')[0];
+    const usuario = await r.json();
+    const chamar = (metodo, caminho, corpo) => fetch(`${base}${caminho}`, { method: metodo, headers: { cookie }, body: corpo && JSON.stringify(corpo) });
+    return { usuario, chamar };
+  };
+  try {
+    const carla = await entrar('carla@habitahub.demo');
+    const rafael = await entrar('rafael@habitahub.demo');
+    assert.equal(carla.usuario.administrador, true);
+    assert.equal(rafael.usuario.administrador, false);
+
+    await fetch(`${base}/api/cadastro`, { method: 'POST', body: JSON.stringify({ nome: 'Pendente Admin', email: 'pendente@teste.com', creci: '77003-F/PR', senha: 'pendente1' }) });
+    const pendente = (await (await rafael.chamar('GET', '/api/corretores')).json()).find((c) => c.email === 'pendente@teste.com');
+
+    // Corretor comum
+    assert.equal((await rafael.chamar('PUT', `/api/corretores/${pendente.id}`, { ativo: true })).status, 403, 'não aprova');
+    assert.equal((await rafael.chamar('POST', '/api/corretores', { nome: 'Atalho', email: 'atalho@teste.com', creci: '77004-F/PR', ativo: true })).status, 403, 'não cria conta ativa');
+    assert.equal((await rafael.chamar('DELETE', `/api/corretores/${pendente.id}`)).status, 403, 'não exclui');
+    assert.equal((await rafael.chamar('PUT', `/api/corretores/${carla.usuario.id}`, { telefone: '(41) 90000-0001' })).status, 403, 'não edita os outros');
+    assert.equal((await rafael.chamar('PUT', `/api/corretores/${rafael.usuario.id}`, { administrador: true })).status, 403, 'não se promove');
+    assert.equal((await rafael.chamar('PUT', `/api/corretores/${rafael.usuario.id}`, { telefone: '(41) 90000-0002', ativo: true })).status, 200, 'edita o próprio cadastro');
+
+    // Administrador
+    assert.equal((await carla.chamar('PUT', `/api/corretores/${carla.usuario.id}`, { ativo: false })).status, 403, 'não se desativa');
+    assert.equal((await carla.chamar('PUT', `/api/corretores/${carla.usuario.id}`, { administrador: false })).status, 403, 'não tira o próprio perfil');
+    assert.equal((await carla.chamar('PUT', `/api/corretores/${pendente.id}`, { ativo: true })).status, 200, 'aprova');
+    assert.equal((await carla.chamar('PUT', `/api/corretores/${rafael.usuario.id}`, { administrador: true })).status, 200, 'promove');
+    assert.equal((await (await rafael.chamar('GET', '/api/sessao')).json()).administrador, true, 'o perfil vale na hora');
+    assert.equal((await carla.chamar('PUT', `/api/corretores/${rafael.usuario.id}`, { administrador: false })).status, 200);
+  } finally {
+    servidor.close();
+  }
+});
+
+test('Administrador: sem nenhum ativo, o corretor ativo mais antigo é promovido', async () => {
+  const repo = new CorretorRepositorio();
+  assert.equal(await garantirAdministrador(), null, 'já existe administrador');
+  const [carla] = await repo.administradoresAtivos();
+  await repo.salvar({ administrador: false }, carla.id);
+  const promovido = await garantirAdministrador();
+  assert.equal(promovido.id, Math.min(...(await repo.listar()).filter((c) => c.ativo).map((c) => c.id)));
+  assert.equal((await repo.administradoresAtivos()).length, 1);
 });
