@@ -34,7 +34,24 @@ class Database {
     await this.#driver.conectar();
     const schema = path.join(__dirname, `schema.${this.#driver.dialeto}.sql`);
     await this.#driver.executar(fs.readFileSync(schema, 'utf8'));
+    await this.#migrar();
     return this;
+  }
+
+  // Bancos criados antes de uma coluna existir não passam pelo CREATE TABLE de
+  // novo: aqui a coluna é acrescentada. Se ela já existe, o ALTER falha e é ignorado.
+  async #migrar() {
+    const colunas = [
+      ['corretores', 'senha_hash', 'TEXT'],
+      ['corretores', 'aguardando_aprovacao', 'INTEGER NOT NULL DEFAULT 0'],
+    ];
+    for (const [tabela, coluna, tipo] of colunas) {
+      try {
+        await this.#driver.executar(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${tipo}`);
+      } catch (e) {
+        if (!/duplicate column|already exists/i.test(e.message)) throw e;
+      }
+    }
   }
 
   get descricao() {

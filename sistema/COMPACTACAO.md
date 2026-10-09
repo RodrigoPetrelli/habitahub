@@ -48,12 +48,12 @@ Os números abaixo foram gerados pelos próprios scripts do projeto e podem ser 
 
 | Componente genérico | Linhas do genérico | Usos | Linhas específicas | Sem reuso (estimado) | Com reuso | Economia |
 |---|---|---|---|---|---|---|
-| TelaCrud (6 telas de CRUD) | 129 | 6 | 163 | 937 | 292 | 645 linhas (69%) |
+| TelaCrud (6 telas de CRUD) | 160 | 6 | 169 | 1129 | 329 | 800 linhas (71%) |
 | CrudControlador (rotas REST dos 6 cadastros) | 35 | 6 | 6 | 216 | 41 | 175 linhas (81%) |
-| Repositorio – Template Method (7 repositórios) | 85 | 7 | 242 | 837 | 327 | 510 linhas (61%) |
-| Validador – Template Method (6 validadores) | 35 | 6 | 102 | 312 | 137 | 175 linhas (56%) |
+| Repositorio – Template Method (7 repositórios) | 85 | 7 | 286 | 881 | 371 | 510 linhas (58%) |
+| Validador – Template Method (6 validadores) | 35 | 6 | 106 | 316 | 141 | 175 linhas (55%) |
 | Relatorio – Template Method (3 relatórios) | 37 | 3 | 108 | 219 | 145 | 74 linhas (34%) |
-| **Total** | | | | **2521** | **942** | **1579 linhas (63%)** |
+| **Total** | | | | **2761** | **1027** | **1734 linhas (63%)** |
 
 Como ler a tabela:
 - **Linhas contadas:** só linhas de código, sem linhas vazias e sem comentários.
@@ -78,7 +78,7 @@ Como ler a tabela:
    - encurta nomes de variáveis locais;
    - simplifica expressões.
 3. **Gerar três pacotes:**
-   - `dist/js/app.min.js`: os 9 módulos JavaScript da aplicação viram 1 arquivo.
+   - `dist/js/app.min.js`: os 10 módulos JavaScript da aplicação viram 1 arquivo.
    - `dist/css/app.min.css` e `dist/index.html`: estilos e página compactados.
    - `dist/lib/tela-crud.min.js`: o **componente reutilizável** `TelaCrud` e os utilitários dele, em um arquivo só, com ponto de entrada em `public/js/biblioteca.js`. Qualquer produto da linha monta uma tela de CRUD com ele:
 
@@ -96,13 +96,13 @@ Como ler a tabela:
 
 | Parte | Arquivos antes → depois | Antes | Depois | Redução | gzip antes | gzip depois |
 |---|---|---|---|---|---|---|
-| JavaScript da aplicação | 9 → 1 | 22.9 KB | 15.2 KB | 34% | 8.9 KB | 5.1 KB |
-| CSS | 1 → 1 | 5.4 KB | 4.6 KB | 15% | 1.7 KB | 1.6 KB |
-| HTML | 1 → 1 | 1.0 KB | 0.9 KB | 12% | 0.5 KB | 0.5 KB |
-| Biblioteca TelaCrud | 2 → 1 | 8.3 KB | 4.9 KB | 40% | 3.1 KB | 2.1 KB |
+| JavaScript da aplicação | 10 → 1 | 44.7 KB | 27.8 KB | 38% | 16.6 KB | 9.5 KB |
+| CSS | 1 → 1 | 13.0 KB | 10.6 KB | 18% | 3.4 KB | 3.0 KB |
+| HTML | 1 → 1 | 1.3 KB | 1.2 KB | 9% | 0.7 KB | 0.6 KB |
+| Biblioteca TelaCrud | 2 → 1 | 14.2 KB | 7.5 KB | 47% | 5.5 KB | 3.2 KB |
 
-- **Requisições:** o navegador baixa 1 arquivo JavaScript em vez de 9.
-- **gzip:** as colunas mostram o tamanho comprimido. Com ele, o JavaScript transferido cai de 8.9 KB para 5.1 KB.
+- **Requisições:** o navegador baixa 1 arquivo JavaScript em vez de 10.
+- **gzip:** as colunas mostram o tamanho comprimido. Com ele, o JavaScript transferido cai de 16.6 KB para 9.5 KB.
 - **Por que a redução não é maior:** os textos da interface, em português, não podem ser encurtados, e isso limita o ganho da minificação.
 
 ---
@@ -112,4 +112,4 @@ Como ler a tabela:
 | Técnica | O que compacta | Ganho para o reuso |
 |---|---|---|
 | Extração de componentes genéricos | O código-fonte (63% menos linhas) | Telas e cadastros novos custam poucas linhas: basta configurar ou estender |
-| Minificação e empacotamento | O código distribuído (34% a 40% menos bytes) | O componente reutilizável vira uma biblioteca de um arquivo só, fácil de levar para outro produto da linha (LPS) |
+| Minificação e empacotamento | O código distribuído (38% a 47% menos bytes) | O componente reutilizável vira uma biblioteca de um arquivo só, fácil de levar para outro produto da linha (LPS) |

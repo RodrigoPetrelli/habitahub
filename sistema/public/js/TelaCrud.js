@@ -1,13 +1,15 @@
-import { api, el, avisar } from './util.js';
+import { api, el, avisar, abrirModal, confirmar } from './util.js';
 
 // Componente reutilizado pelas 6 telas de CRUD. Cada tela (js/telas/*.js) só
 // descreve título, recurso da API, campos do formulário e colunas da tabela.
+// O visual segue o protótipo: cabeçalho de página, cartão com busca e tabela,
+// formulário em modal e confirmação de exclusão dentro da página.
 //
 // definicao = {
 //   titulo, recurso, descricao,
 //   fontes:  { imoveis: (i) => rótulo }      cadastros usados em selects e colunas
-//   campos:  [{ nome, rotulo, tipo, opcoes, fonte, largura, dica, padrao }]
-//   colunas: [{ rotulo, valor: (registro, tela) => texto ou nó }]
+//   campos:  [{ nome, rotulo, tipo, opcoes, fonte, largura, dica, padrao, autocompletar }]
+//   colunas: [{ rotulo, valor: (registro, tela) => texto ou nó, classe }]
 //   aoAbrirFormulario(form, registro, tela)  gancho opcional
 // }
 export class TelaCrud {
@@ -16,6 +18,7 @@ export class TelaCrud {
     this.produto = produto;
     this.fontes = {};
     this.registros = [];
+    this.busca = '';
   }
 
   async montar(container) {
@@ -46,21 +49,43 @@ export class TelaCrud {
   #renderizar() {
     const { titulo, descricao, colunas } = this.def;
     const linhas = this.registros.map((r) => el('tr', {},
-      colunas.map((c) => el('td', {}, c.valor(r, this) ?? '')),
+      colunas.map((c) => el('td', { class: c.classe || null }, c.valor(r, this) ?? '')),
       el('td', { class: 'acoes-linha' },
-        el('button', { class: 'btn pequeno', onclick: () => this.abrirFormulario(r) }, 'Editar'), ' ',
-        el('button', { class: 'btn pequeno perigo', onclick: () => this.excluir(r) }, 'Excluir')),
+        el('button', { class: 'btn btn-sm', onclick: () => this.abrirFormulario(r) }, 'Editar'), ' ',
+        el('button', { class: 'btn btn-sm btn-ghost perigo', onclick: () => this.excluir(r) }, 'Excluir')),
     ));
 
+    const contador = el('span', { class: 'muted small' });
+    const semResultado = el('div', { class: 'empty hidden' }, 'Nenhum registro corresponde à busca.');
+    const filtrar = () => {
+      const termo = normalizar(this.busca);
+      let visiveis = 0;
+      linhas.forEach((tr) => {
+        const mostra = !termo || normalizar(tr.textContent).includes(termo);
+        tr.classList.toggle('hidden', !mostra);
+        visiveis += mostra;
+      });
+      contador.textContent = termo ? `${visiveis} de ${linhas.length} registro(s)` : `${linhas.length} registro(s)`;
+      semResultado.classList.toggle('hidden', visiveis > 0 || !linhas.length);
+    };
+
     this.container.replaceChildren(
-      el('div', { class: 'cabecalho' },
-        el('div', {}, el('h1', {}, titulo), descricao ? el('p', { class: 'muted' }, descricao) : null),
-        el('button', { class: 'btn primario', onclick: () => this.abrirFormulario(null) }, `+ Novo`)),
-      el('div', { class: 'tabela-wrap' },
-        el('table', {},
-          el('thead', {}, el('tr', {}, colunas.map((c) => el('th', {}, c.rotulo)), el('th', {}))),
-          el('tbody', {}, linhas.length ? linhas : el('tr', {}, el('td', { class: 'vazio', colSpan: colunas.length + 1 }, 'Nenhum registro cadastrado.'))))),
+      el('div', { class: 'page-head' },
+        el('div', {}, el('h1', {}, titulo), descricao ? el('p', { class: 'sub' }, descricao) : null),
+        el('button', { class: 'btn btn-primary', onclick: () => this.abrirFormulario(null) }, `+ Novo cadastro`)),
+      el('div', { class: 'card' },
+        el('div', { class: 'row between' },
+          el('input', { class: 'input busca', type: 'search', placeholder: `Buscar em ${titulo.toLowerCase()}…`, value: this.busca, 'aria-label': 'Buscar',
+            oninput: (e) => { this.busca = e.target.value; filtrar(); } }),
+          contador),
+        linhas.length
+          ? el('div', { class: 'table-wrap' }, el('table', { class: 'table' },
+            el('thead', {}, el('tr', {}, colunas.map((c) => el('th', {}, c.rotulo)), el('th', {}))),
+            el('tbody', {}, linhas)))
+          : el('div', { class: 'empty' }, 'Nenhum registro cadastrado. Use "+ Novo cadastro" para começar.'),
+        semResultado),
     );
+    filtrar();
   }
 
   #opcoesDo(campo) {
@@ -76,22 +101,22 @@ export class TelaCrud {
     const id = `campo-${campo.nome}`;
     let entrada;
     if (campo.tipo === 'select') {
-      entrada = el('select', { id, name: campo.nome },
+      entrada = el('select', { id, name: campo.nome, class: 'input' },
         el('option', { value: '' }, 'Selecione…'),
         this.#opcoesDo(campo).map((o) => el('option', { value: o.valor, selected: String(o.valor) === String(valor ?? '') }, o.rotulo)));
     } else if (campo.tipo === 'textarea') {
-      entrada = el('textarea', { id, name: campo.nome }, valor ?? '');
+      entrada = el('textarea', { id, name: campo.nome, class: 'input' }, valor ?? '');
     } else if (campo.tipo === 'checkbox') {
       entrada = el('input', { id, name: campo.nome, type: 'checkbox', checked: Boolean(valor) });
-      return el('div', { class: 'campo check', 'data-campo': campo.nome }, entrada, el('label', { for: id }, campo.rotulo), el('span', { class: 'erro' }));
+      return el('div', { class: 'field check', 'data-campo': campo.nome }, entrada, el('label', { for: id }, campo.rotulo), el('span', { class: 'error-msg' }));
     } else {
-      entrada = el('input', { id, name: campo.nome, type: campo.tipo || 'text', value: valor ?? '', step: campo.tipo === 'number' ? 'any' : null, placeholder: campo.exemplo || null });
+      entrada = el('input', { id, name: campo.nome, class: 'input', type: campo.tipo || 'text', value: valor ?? '', step: campo.tipo === 'number' ? 'any' : null, placeholder: campo.exemplo || null, autocomplete: campo.autocompletar || null });
     }
-    return el('div', { class: `campo ${campo.largura || ''}`, 'data-campo': campo.nome },
+    return el('div', { class: `field ${campo.largura || ''}`, 'data-campo': campo.nome },
       el('label', { for: id }, campo.rotulo),
       entrada,
-      campo.dica ? el('span', { class: 'dica' }, campo.dica) : null,
-      el('span', { class: 'erro' }));
+      campo.dica ? el('span', { class: 'hint' }, campo.dica) : null,
+      el('span', { class: 'error-msg' }));
   }
 
   #lerFormulario(form) {
@@ -106,42 +131,48 @@ export class TelaCrud {
   }
 
   abrirFormulario(registro) {
-    const dialogo = document.getElementById('dialogo');
-    const form = document.getElementById('formulario');
     const novo = registro == null;
-    document.getElementById('dialogo-titulo').textContent = `${novo ? 'Novo' : 'Editar'} – ${this.def.titulo}`;
-    document.getElementById('erro-geral').textContent = '';
-    document.getElementById('campos').replaceChildren(
-      ...this.def.campos.map((c) => this.#criarCampo(c, novo ? c.padrao : registro[c.nome])));
-
-    this.def.aoAbrirFormulario?.(form, registro, this);
-
-    form.onsubmit = async (evento) => {
-      evento.preventDefault();
-      form.querySelectorAll('.campo').forEach((c) => { c.classList.remove('invalido'); c.querySelector('.erro').textContent = ''; });
-      document.getElementById('erro-geral').textContent = '';
-      try {
-        const dados = this.#lerFormulario(form);
-        if (novo) await api('POST', `/api/${this.def.recurso}`, dados);
-        else await api('PUT', `/api/${this.def.recurso}/${registro.id}`, dados);
-        dialogo.close();
-        avisar(novo ? 'Cadastro criado.' : 'Alterações salvas.');
-        await this.recarregar();
-      } catch (e) {
-        const naoMostrados = [];
-        for (const [nome, msg] of Object.entries(e.erros || {})) {
-          const campo = form.querySelector(`[data-campo="${nome}"]`);
-          if (campo) { campo.classList.add('invalido'); campo.querySelector('.erro').textContent = msg; } else naoMostrados.push(msg);
+    const erroGeral = el('div', { class: 'alert danger hidden', role: 'alert' });
+    const { caixa: form } = abrirModal({
+      titulo: novo ? `Novo cadastro – ${this.def.titulo}` : `Editar – ${this.def.titulo}`,
+      largo: this.def.campos.length > 6,
+      corpo: [erroGeral, el('div', { class: 'form-grid' }, this.def.campos.map((c) => this.#criarCampo(c, novo ? c.padrao : registro[c.nome])))],
+      rodape: (fechar) => [
+        el('button', { type: 'button', class: 'btn', onclick: fechar }, 'Cancelar'),
+        el('button', { type: 'submit', class: 'btn btn-primary' }, novo ? 'Cadastrar' : 'Salvar alterações'),
+      ],
+      aoEnviar: async (fechar, form) => {
+        form.querySelectorAll('.field').forEach((c) => { c.querySelector('.input')?.classList.remove('invalid'); c.querySelector('.error-msg').textContent = ''; });
+        erroGeral.classList.add('hidden');
+        const botao = form.querySelector('[type=submit]');
+        botao.disabled = true;
+        try {
+          const dados = this.#lerFormulario(form);
+          if (novo) await api('POST', `/api/${this.def.recurso}`, dados);
+          else await api('PUT', `/api/${this.def.recurso}/${registro.id}`, dados);
+          fechar();
+          avisar(novo ? 'Cadastro criado.' : 'Alterações salvas.');
+          await this.recarregar();
+        } catch (e) {
+          const naoMostrados = [];
+          for (const [nome, msg] of Object.entries(e.erros || {})) {
+            const campo = form.querySelector(`[data-campo="${nome}"]`);
+            if (campo) { campo.querySelector('.input')?.classList.add('invalid'); campo.querySelector('.error-msg').textContent = msg; } else naoMostrados.push(msg);
+          }
+          erroGeral.textContent = [e.message, ...naoMostrados].join(' ');
+          erroGeral.classList.remove('hidden');
+          form.querySelector('.invalid')?.focus();
+        } finally {
+          botao.disabled = false;
         }
-        document.getElementById('erro-geral').textContent = [e.message, ...naoMostrados].join(' ');
-      }
-    };
-    document.getElementById('cancelar').onclick = () => dialogo.close();
-    dialogo.showModal();
+      },
+    });
+    this.def.aoAbrirFormulario?.(form, registro, this);
   }
 
   async excluir(registro) {
-    if (!confirm(`Excluir este registro de ${this.def.titulo.toLowerCase()}?`)) return;
+    const ok = await confirmar(`Este registro de ${this.def.titulo.toLowerCase()} será excluído definitivamente.`, { titulo: 'Excluir registro', ok: 'Excluir', perigo: true });
+    if (!ok) return;
     try {
       await api('DELETE', `/api/${this.def.recurso}/${registro.id}`);
       avisar('Registro excluído.');
@@ -151,3 +182,5 @@ export class TelaCrud {
     }
   }
 }
+
+const normalizar = (texto) => String(texto).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();

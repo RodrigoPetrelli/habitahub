@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS corretores (
   telefone   TEXT,
   creci      TEXT    NOT NULL UNIQUE,
   ativo      INTEGER NOT NULL DEFAULT 1,
+  senha_hash TEXT,    -- acesso ao sistema (scrypt); NULL = corretor sem login
+  aguardando_aprovacao INTEGER NOT NULL DEFAULT 0, -- 1 = criou a conta e espera aprovação
   criado_em  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 

@@ -7,6 +7,10 @@ const ClienteRepositorio = require('../repositorios/ClienteRepositorio');
 const ImovelRepositorio = require('../repositorios/ImovelRepositorio');
 const VisitaRepositorio = require('../repositorios/VisitaRepositorio');
 const PropostaRepositorio = require('../repositorios/PropostaRepositorio');
+const Database = require('./Database');
+
+// Senha das contas de demonstração (a mesma do protótipo).
+const SENHA_DEMO = 'demo1234';
 
 // Completa um CPF fictício com os dígitos verificadores corretos.
 function cpf(base9) {
@@ -32,8 +36,8 @@ async function popularSeVazio() {
   const config = Configuracao.instancia();
   const locacao = config.opcoes('modalidades').includes('Locação');
 
-  const carla = await corretores.salvar({ nome: 'Carla Mendes', email: 'carla@habitahub.demo', telefone: '(41) 99876-1001', creci: '12345-F/PR', ativo: true });
-  const rafael = await corretores.salvar({ nome: 'Rafael Costa', email: 'rafael@habitahub.demo', telefone: '(41) 99876-1002', creci: '23456-F/PR', ativo: true });
+  const carla = await corretores.salvar({ nome: 'Carla Mendes', email: 'carla@habitahub.demo', telefone: '(41) 99876-1001', creci: '12345-F/PR', ativo: true, senha: SENHA_DEMO });
+  const rafael = await corretores.salvar({ nome: 'Rafael Costa', email: 'rafael@habitahub.demo', telefone: '(41) 99876-1002', creci: '23456-F/PR', ativo: true, senha: SENHA_DEMO });
 
   const proprietarios = new ProprietarioRepositorio();
   const joao = await proprietarios.salvar({ nome: 'João Pereira', cpf: cpf('000000002'), email: 'joao@habitahub.demo', telefone: '(41) 98888-2001' });
@@ -75,4 +79,14 @@ async function popularSeVazio() {
   return true;
 }
 
-module.exports = { popularSeVazio };
+// Bancos populados antes do login existir têm os corretores de demonstração sem
+// senha. Aqui eles recebem a senha de demonstração; outros corretores não são tocados.
+async function garantirAcessoDeDemonstracao() {
+  const db = Database.instancia();
+  const semSenha = await db.todos("SELECT id FROM corretores WHERE senha_hash IS NULL AND email LIKE '%@habitahub.demo'");
+  const corretores = new CorretorRepositorio();
+  for (const { id } of semSenha) await corretores.salvar({ senha: SENHA_DEMO }, id);
+  return semSenha.length;
+}
+
+module.exports = { popularSeVazio, garantirAcessoDeDemonstracao, SENHA_DEMO };

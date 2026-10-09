@@ -23,6 +23,6 @@ export default {
     { rotulo: 'Cliente', valor: (p, tela) => tela.rotuloDe('clientes', p.clienteId) },
     { rotulo: 'Valor', valor: (p) => brl(p.valorNegociado) + (p.percentualDoPreco ? ` (${p.percentualDoPreco}%)` : '') },
     { rotulo: 'Comissão estimada', valor: (p) => `${brl(p.comissaoEstimada)} · ${p.regraComissao}` },
-    { rotulo: 'Status', valor: (p) => etiqueta(p.status, p.status === 'Aprovada' ? 'on' : p.status === 'Recusada' ? 'off' : '') },
+    { rotulo: 'Status', valor: (p) => etiqueta(p.status) },
   ],
 };

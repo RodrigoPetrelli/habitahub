@@ -24,7 +24,7 @@ export default {
     { rotulo: 'Imóvel', valor: (v, tela) => tela.rotuloDe('imoveis', v.imovelId) },
     { rotulo: 'Cliente', valor: (v, tela) => tela.rotuloDe('clientes', v.clienteId) },
     { rotulo: 'Corretor', valor: (v, tela) => tela.rotuloDe('corretores', v.corretorId) },
-    { rotulo: 'Status', valor: (v) => etiqueta(v.status, v.status === 'Realizada' ? 'on' : v.status === 'Cancelada' ? 'off' : '') },
-    { rotulo: 'Feedback', valor: (v) => v.feedback },
+    { rotulo: 'Status', valor: (v) => etiqueta(v.status) },
+    { rotulo: 'Feedback', valor: (v) => v.feedback, classe: 'pre' },
   ],
 };

@@ -1,5 +1,5 @@
 // Tela CRUD 4 – Imóveis (tabela "imoveis")
-import { brl, etiqueta } from '../util.js';
+import { brl, etiqueta, miniatura } from '../util.js';
 
 const STATUS = ['Disponível', 'Reservado', 'Vendido', 'Alugado', 'Inativo'];
 
@@ -30,13 +30,14 @@ export default {
     { nome: 'corretorId', rotulo: 'Corretor responsável', tipo: 'select', fonte: 'corretores', largura: 'metade' },
   ],
   colunas: [
-    { rotulo: 'Código', valor: (i) => i.codigo },
+    { rotulo: '', valor: (i) => miniatura(i.id) },
+    { rotulo: 'Código', valor: (i) => i.codigo, classe: 'nowrap' },
     { rotulo: 'Título', valor: (i) => i.titulo },
     { rotulo: 'Finalidade', valor: (i) => i.finalidade },
     { rotulo: 'Preço', valor: (i) => brl(i.preco) + (i.finalidade === 'Locação' ? '/mês' : '') },
     { rotulo: 'Endereço', valor: (i) => i.enderecoFormatado },
     { rotulo: 'Proprietário', valor: (i, tela) => tela.rotuloDe('proprietarios', i.proprietarioId) },
-    { rotulo: 'Status', valor: (i) => etiqueta(i.status, i.status === 'Disponível' ? 'on' : '') },
+    { rotulo: 'Status', valor: (i) => etiqueta(i.status) },
   ],
 
   // Busca o endereço no ViaCEP quando o CEP é preenchido.

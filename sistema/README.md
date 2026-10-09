@@ -39,7 +39,7 @@ cd sistema
 npm install
 npm start                 # produto "lana-mayan" em http://localhost:3200
 npm run start:autonomo    # produto "corretor-autonomo" (use --porta=3201 para rodar os dois)
-npm test                  # 10 testes automatizados (SQLite em memória)
+npm test                  # 16 testes automatizados (SQLite em memória)
 npm run build             # compacta o front-end em dist/ (npm run start:dist já serve essa versão)
 npm run medir-reuso       # tabela de economia de código por reuso
 ```
@@ -56,8 +56,8 @@ O passo a passo e os números estão em [`COMPACTACAO.md`](COMPACTACAO.md). São
 
 | Técnica | Comando | Resultado |
 |---|---|---|
-| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 942 linhas em vez de cerca de 2.521: 63% menos código |
-| Minificação e empacotamento (esbuild) | `npm run build` | 9 módulos JS viram 1 arquivo, 34% menor. A biblioteca reutilizável `dist/lib/tela-crud.min.js` ficou 40% menor |
+| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 1.027 linhas em vez de cerca de 2.761: 63% menos código |
+| Minificação e empacotamento (esbuild) | `npm run build` | 10 módulos JS viram 1 arquivo, 38% menor. A biblioteca reutilizável `dist/lib/tela-crud.min.js` ficou 47% menor |
 
 O Docker serve a versão compactada (`dist/`).
 
@@ -104,7 +104,7 @@ Os padrões também se combinam: o Template Method `Relatorio.gerar()` entrega o
 
 ### Telas de CRUD (6 telas, 2 por integrante)
 
-Todas as telas listam, criam, editam e excluem registros direto no banco. Elas reutilizam o componente `public/js/TelaCrud.js` no front-end e o `src/http/CrudControlador.js` no back-end.
+Todas as telas listam, criam, editam e excluem registros direto no banco. Elas reutilizam o componente `public/js/TelaCrud.js` no front-end e o `src/http/CrudControlador.js` no back-end. O visual segue o design system do protótipo (`prototipo/css/base.css`): menu lateral em grupos, painel com indicadores, cartões, selos de status, formulário em modal, confirmação de exclusão na própria página e busca na listagem.
 
 | Integrante (sugestão, ajustar) | Tela | Arquivo da tela | Repositório / tabela |
 |---|---|---|---|
@@ -122,6 +122,26 @@ Regras de negócio que aparecem nas telas:
 - **Propostas:** uma proposta aprovada reserva o imóvel, e a tela mostra a comissão estimada.
 - **Visitas:** visita realizada exige feedback e envia esse feedback ao proprietário.
 - **Notificações:** as notificações aparecem na tela "Notificações".
+
+### Login
+
+O sistema só abre depois do login. Quem entra são os **corretores**. Há dois jeitos de ter uma conta:
+- **Criar conta (`#/cadastro`, link na tela de login):** o próprio corretor informa nome, e-mail, telefone, CRECI e senha, com o indicador de força do protótipo. A conta nasce **aguardando aprovação** e não entra no sistema. Os corretores ativos recebem uma notificação, e o Painel mostra um aviso com o botão "Revisar cadastros". Para aprovar, basta editar o corretor e marcar "Corretor ativo". O novo corretor recebe um aviso de que foi aprovado. São aceitas no máximo 5 contas por IP a cada hora.
+- **Cadastro pela equipe:** um corretor logado cria o colega na tela Corretores e define a senha ali.
+
+| Conta de demonstração | E-mail | Senha |
+|---|---|---|
+| Carla Mendes | `carla@habitahub.demo` | `demo1234` |
+| Rafael Costa | `rafael@habitahub.demo` | `demo1234` |
+
+- **Senha:** fica só como hash scrypt com sal aleatório, na coluna `corretores.senha_hash`, e nunca sai da API. Ela precisa ter 8 ou mais caracteres, com letras e números (a mesma regra do protótipo). No formulário do corretor, deixar a senha em branco mantém a atual. Um corretor sem senha não consegue entrar.
+- **Sessão:** é um token aleatório num cookie `HttpOnly` e `SameSite=Strict`, válido por 8 horas. As sessões ficam na memória do servidor, então reiniciar o servidor pede login de novo.
+- **Rotas protegidas:** sem sessão, a API responde 401. Só ficam abertas `POST /api/login`, `POST /api/logout`, `POST /api/cadastro`, `GET /api/sessao` e `GET /api/produto`, que a tela de login usa para mostrar o nome e a cor do produto.
+- **Aguardando aprovação × desativado:** a coluna `corretores.aguardando_aprovacao` separa os dois casos, e cada um tem a sua mensagem no login. A marca some na primeira ativação, então desativar alguém depois não o faz voltar a "aguardando".
+- **Perda do acesso:** a sessão termina na hora se o corretor for desativado ou excluído ou se a senha dele mudar. A tela volta sozinha para o login.
+- **Tentativas erradas:** depois de 5 senhas erradas para o mesmo e-mail, o login fica bloqueado por 5 minutos. A mensagem de erro é a mesma para e-mail inexistente e senha errada.
+- **Bancos antigos:** bancos criados antes do login ganham as colunas `senha_hash` e `aguardando_aprovacao` ao iniciar, e as contas de demonstração recebem a senha `demo1234`.
+- **Código:** `src/seguranca/` (senhas e sessões), rotas de acesso em `src/app.js`, criação de conta em `CorretorRepositorio.criarConta()` e telas de login e de criar conta em `public/js/acesso.js`.
 
 ### Banco de dados (7 tabelas)
 
@@ -183,6 +203,7 @@ sistema/
 │   ├── relatorios/           Template Method 3
 │   ├── estrategias/          Strategy: comissao, notificacao, exportacao
 │   ├── variabilidade/        modelo de features
+│   ├── seguranca/            login: hash de senha (scrypt) e sessões
 │   └── http/                 roteador e controlador CRUD genérico
 ├── public/                   telas (HTML/CSS/JS, código-fonte)
 ├── scripts/                  build.js (esbuild) e medir-reuso.js

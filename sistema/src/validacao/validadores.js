@@ -6,6 +6,7 @@ const Imovel = require('../modelos/Imovel');
 const Visita = require('../modelos/Visita');
 const Proposta = require('../modelos/Proposta');
 const Configuracao = require('../infra/Configuracao');
+const { senhaForte } = require('../seguranca/senhas');
 
 class ValidadorPessoa extends Validador {
   normalizar(dados) {
@@ -24,7 +25,9 @@ class ValidadorPessoa extends Validador {
 
 class ValidadorCorretor extends ValidadorPessoa {
   normalizar(dados) {
+    const { senha } = dados; // espaços fazem parte da senha: ela não é aparada
     super.normalizar(dados);
+    dados.senha = senha;
     if (dados.creci) dados.creci = dados.creci.toUpperCase();
     return dados;
   }
@@ -38,6 +41,8 @@ class ValidadorCorretor extends ValidadorPessoa {
     if (dados.creci && !/^\d{3,6}-?[FJ]?\/[A-Z]{2}$/.test(dados.creci)) {
       erros.creci = 'Use o formato 12345-F/PR.';
     }
+    // Senha é opcional (em branco mantém a atual); se vier, precisa ser forte.
+    if (dados.senha && !senhaForte(dados.senha)) erros.senha = 'Use 8 ou mais caracteres, com letras e números.';
   }
 }
 

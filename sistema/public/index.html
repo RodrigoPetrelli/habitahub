@@ -7,28 +7,25 @@
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-  <div class="shell">
+  <!-- Tela de login (mesmo layout do protótipo: marca + cartão centralizado). -->
+  <div class="auth-wrap hidden" id="tela-login"></div>
+
+  <!-- Mesmo shell do protótipo (prototipo/js/app.js): topbar, sidebar e área principal. -->
+  <div class="shell hidden" id="shell">
     <header class="topbar">
-      <span class="logo">🏠 HabitaHub</span>
+      <button class="icon-btn menu-toggle" id="menu-toggle" aria-label="Menu">☰</button>
+      <a class="logo" href="#/inicio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 14.5h5"/></svg>
+        HabitaHub
+      </a>
+      <div class="spacer"></div>
       <span class="produto" id="produto-nome"></span>
+      <span class="user-chip" id="usuario"></span>
+      <button class="btn btn-sm" id="sair">Sair</button>
     </header>
-    <nav class="menu" id="menu"></nav>
-    <main class="conteudo" id="conteudo"><p class="muted">Carregando…</p></main>
+    <nav class="sidebar" id="menu"></nav>
+    <main class="main" id="conteudo"></main>
   </div>
-
-  <dialog id="dialogo" class="dialogo">
-    <form method="dialog" id="formulario" novalidate>
-      <h2 id="dialogo-titulo"></h2>
-      <div class="campos" id="campos"></div>
-      <p class="erro-geral" id="erro-geral"></p>
-      <div class="acoes">
-        <button type="button" class="btn" id="cancelar">Cancelar</button>
-        <button type="submit" class="btn primario">Salvar</button>
-      </div>
-    </form>
-  </dialog>
-
-  <div class="aviso" id="aviso" role="status"></div>
 
   <script type="module" src="/js/app.js"></script>
 </body>

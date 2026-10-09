@@ -3,7 +3,7 @@
 //   npm run build   →  gera dist/ e imprime o tamanho antes e depois
 //
 // Saídas:
-//   dist/js/app.min.js          aplicação inteira: 9 módulos ES viram 1 arquivo minificado
+//   dist/js/app.min.js          aplicação inteira: 10 módulos ES viram 1 arquivo minificado
 //   dist/css/app.min.css        folha de estilos minificada
 //   dist/index.html             página apontando para os arquivos compactados
 //   dist/lib/tela-crud.min.js   componente reutilizável (TelaCrud + utilitários) em um
