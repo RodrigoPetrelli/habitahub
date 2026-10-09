@@ -33,11 +33,14 @@ async function main() {
   await esbuild.build({ ...comum, entryPoints: [path.join(publico, 'css', 'app.css')], outfile: path.join(dist, 'css', 'app.min.css') });
   await esbuild.build({ ...comum, entryPoints: [path.join(publico, 'js', 'biblioteca.js')], format: 'esm', outfile: path.join(dist, 'lib', 'tela-crud.min.js') });
 
-  const html = fs.readFileSync(path.join(publico, 'index.html'), 'utf8')
-    .replace('/css/app.css', '/css/app.min.css')
-    .replace('/js/app.js', '/js/app.min.js')
-    .replace(/\n\s*/g, '');
-  fs.writeFileSync(path.join(dist, 'index.html'), html);
+  // Troca os atributos exatos (não qualquer texto parecido, como um comentário)
+  // e falha se algum não for encontrado, em vez de gerar uma página quebrada.
+  let html = fs.readFileSync(path.join(publico, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  for (const [de, para] of [['href="/css/app.css"', 'href="/css/app.min.css"'], ['src="/js/app.js"', 'src="/js/app.min.js"']]) {
+    if (!html.includes(de)) throw new Error(`index.html não tem ${de}.`);
+    html = html.replace(de, para);
+  }
+  fs.writeFileSync(path.join(dist, 'index.html'), html.replace(/\n\s*/g, ''));
 
   // Biblioteca: só o componente reutilizável e o que ele usa.
   const fontesBiblioteca = ['TelaCrud.js', 'util.js'].map((f) => path.join(publico, 'js', f));
