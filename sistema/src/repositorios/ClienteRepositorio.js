@@ -19,9 +19,9 @@ class ClienteRepositorio extends Repositorio {
     return 'nome';
   }
 
-  antesDeExcluir(cliente) {
-    this.impedirSeUsado('visitas', 'cliente_id', cliente.id, 'O cliente tem visitas registradas e não pode ser excluído.');
-    this.impedirSeUsado('propostas', 'cliente_id', cliente.id, 'O cliente tem propostas registradas e não pode ser excluído.');
+  async antesDeExcluir(cliente) {
+    await this.impedirSeUsado('visitas', 'cliente_id', cliente.id, 'O cliente tem visitas registradas e não pode ser excluído.');
+    await this.impedirSeUsado('propostas', 'cliente_id', cliente.id, 'O cliente tem propostas registradas e não pode ser excluído.');
   }
 }
 

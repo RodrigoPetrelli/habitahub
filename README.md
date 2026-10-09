@@ -8,7 +8,7 @@ O HabitaHub é um sistema de gestão para o setor imobiliário desenvolvido para
 
 ## Sistema
 
-A primeira versão funcional fica em [`sistema/`](sistema/README.md). Ela tem back-end Node.js com SQLite, 6 telas de CRUD e 7 tabelas. Também aplica os padrões Singleton, Template Method e Strategy e traz um exemplo de variabilidade com dois produtos da linha (LPS). Para rodar, use `cd sistema && npm start` e acesse http://localhost:3200.
+A primeira versão funcional fica em [`sistema/`](sistema/README.md). Ela tem back-end Node.js, banco PostgreSQL em container próprio, 6 telas de CRUD e 7 tabelas. Também aplica os padrões Singleton, Template Method e Strategy e traz um exemplo de variabilidade com dois produtos da linha (LPS). Para rodar, use `docker compose up -d --build` ou, sem Docker, `cd sistema && npm install && npm start`, que usa SQLite local.
 
 ## Protótipo
 
@@ -20,4 +20,4 @@ Há um protótipo navegável em [`prototipo/`](prototipo/README.md) que cobre os
 docker compose up -d --build
 ```
 
-O protótipo fica disponível em http://localhost:3100, e os dois produtos do sistema ficam em http://localhost:3200 (Lana Mayan) e http://localhost:3201 (Corretor Autônomo). Para parar, use `docker compose down`.
+O protótipo fica disponível em http://localhost:3100, e os dois produtos do sistema ficam em http://localhost:3200 (Lana Mayan) e http://localhost:3201 (Corretor Autônomo). O banco PostgreSQL roda no container `habitahub-banco`, acessível pela porta 5433. Para parar, use `docker compose down`.

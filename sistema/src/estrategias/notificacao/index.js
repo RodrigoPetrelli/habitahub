@@ -66,7 +66,7 @@ class Notificador {
     return new Notificador(new Canal());
   }
 
-  enviar(pessoa, mensagem) {
+  async enviar(pessoa, mensagem) {
     if (!pessoa) return null;
     const notificacao = new Notificacao({
       canal: this.canal.nome,

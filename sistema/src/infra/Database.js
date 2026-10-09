@@ -1,17 +1,20 @@
+const { AsyncLocalStorage } = require('node:async_hooks');
 const fs = require('node:fs');
 const path = require('node:path');
-const { DatabaseSync } = require('node:sqlite');
+const SqliteDriver = require('./bancos/SqliteDriver');
+const PostgresDriver = require('./bancos/PostgresDriver');
 
 // PADRÃO SINGLETON (exemplo 1 de 2)
-// Uma única conexão com o SQLite para todo o processo. Os repositórios pedem
-// Database.instancia() e compartilham a mesma conexão, sem abrir arquivos
-// repetidos nem disputar travas do banco.
+// Um único ponto de acesso ao banco para todo o processo. Os repositórios pedem
+// Database.instancia() e compartilham o mesmo driver: o pool do PostgreSQL
+// (container "banco" no docker compose) ou o arquivo SQLite local.
 class Database {
   static #instancia = null;
   static #chave = Symbol('Database');
 
-  #conexao = null;
-  #arquivo = null;
+  #driver = null;
+  // Guarda a conexão da transação aberta para as consultas feitas dentro dela.
+  #transacaoAtual = new AsyncLocalStorage();
 
   constructor(chave) {
     if (chave !== Database.#chave) {
@@ -24,63 +27,55 @@ class Database {
     return Database.#instancia;
   }
 
-  conectar(arquivo) {
-    if (this.#conexao) return this;
-    if (arquivo !== ':memory:') fs.mkdirSync(path.dirname(arquivo), { recursive: true });
-    this.#arquivo = arquivo;
-    this.#conexao = new DatabaseSync(arquivo);
-    this.#conexao.exec('PRAGMA foreign_keys = ON;');
+  // "postgres://..." usa o PostgreSQL; qualquer outro valor é um arquivo SQLite (ou ":memory:").
+  async conectar(endereco) {
+    if (this.#driver) return this;
+    this.#driver = /^postgres(ql)?:\/\//.test(endereco) ? new PostgresDriver(endereco) : new SqliteDriver(endereco);
+    await this.#driver.conectar();
+    const schema = path.join(__dirname, `schema.${this.#driver.dialeto}.sql`);
+    await this.#driver.executar(fs.readFileSync(schema, 'utf8'));
     return this;
   }
 
-  get conectado() {
-    return this.#conexao !== null;
+  get descricao() {
+    return this.#driver ? this.#driver.descricao : 'desconectado';
   }
 
-  get arquivo() {
-    return this.#arquivo;
+  #executor() {
+    if (!this.#driver) throw new Error('Banco não conectado. Chame conectar() na inicialização.');
+    return this.#transacaoAtual.getStore() || this.#driver;
   }
 
-  #exigirConexao() {
-    if (!this.#conexao) throw new Error('Banco não conectado. Chame conectar() na inicialização.');
-    return this.#conexao;
+  async todos(sql, parametros = []) {
+    return this.#executor().consultar(sql, parametros);
   }
 
-  executar(sql) {
-    this.#exigirConexao().exec(sql);
+  async um(sql, parametros = []) {
+    return (await this.#executor().consultar(sql, parametros))[0] || null;
   }
 
-  todos(sql, parametros = []) {
-    return this.#exigirConexao().prepare(sql).all(...parametros);
-  }
-
-  um(sql, parametros = []) {
-    return this.#exigirConexao().prepare(sql).get(...parametros) || null;
-  }
-
-  rodar(sql, parametros = []) {
-    return this.#exigirConexao().prepare(sql).run(...parametros);
+  async rodar(sql, parametros = []) {
+    return this.#executor().rodar(sql, parametros);
   }
 
   // Reentrante: uma gravação feita dentro de outra (ex.: a notificação enviada
   // no depoisDeSalvar) entra na transação que já está aberta.
-  transacao(fn) {
-    const conexao = this.#exigirConexao();
-    if (conexao.isTransaction) return fn();
-    conexao.exec('BEGIN');
+  async transacao(fn) {
+    if (this.#transacaoAtual.getStore()) return fn();
+    const conexao = await this.#executor().abrirTransacao();
     try {
-      const resultado = fn();
-      conexao.exec('COMMIT');
+      const resultado = await this.#transacaoAtual.run(conexao, fn);
+      await conexao.confirmar();
       return resultado;
     } catch (e) {
-      conexao.exec('ROLLBACK');
+      await conexao.desfazer();
       throw e;
     }
   }
 
-  fechar() {
-    if (this.#conexao) this.#conexao.close();
-    this.#conexao = null;
+  async fechar() {
+    if (this.#driver) await this.#driver.fechar();
+    this.#driver = null;
   }
 }
 

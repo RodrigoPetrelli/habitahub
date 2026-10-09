@@ -26,8 +26,8 @@ class VisitaRepositorio extends Repositorio {
     return 'data_hora DESC';
   }
 
-  antesDeSalvar(visita, anterior) {
-    const imovel = new ImovelRepositorio().buscarPorId(visita.imovelId);
+  async antesDeSalvar(visita, anterior) {
+    const imovel = await new ImovelRepositorio().buscarPorId(visita.imovelId);
     if (!imovel) throw new ErroRegraNegocio('Imóvel não encontrado.');
     if (!anterior && !imovel.estaDisponivel()) {
       throw new ErroRegraNegocio(`O imóvel ${imovel.codigo} está "${imovel.status}" e não aceita novas visitas.`);
@@ -37,19 +37,19 @@ class VisitaRepositorio extends Repositorio {
     }
   }
 
-  depoisDeSalvar(visita, anterior) {
-    const imovel = new ImovelRepositorio().buscarPorId(visita.imovelId);
-    const cliente = new ClienteRepositorio().buscarPorId(visita.clienteId);
+  async depoisDeSalvar(visita, anterior) {
+    const imovel = await new ImovelRepositorio().buscarPorId(visita.imovelId);
+    const cliente = await new ClienteRepositorio().buscarPorId(visita.clienteId);
     const notificador = Notificador.doProduto();
 
     if (!anterior) {
-      notificador.enviar(cliente, `Visita ao imóvel ${imovel.codigo} agendada para ${dataHoraBr(visita.dataHora)}.`);
+      await notificador.enviar(cliente, `Visita ao imóvel ${imovel.codigo} agendada para ${dataHoraBr(visita.dataHora)}.`);
     } else if (anterior.dataHora !== visita.dataHora) {
-      notificador.enviar(cliente, `Sua visita ao imóvel ${imovel.codigo} foi reagendada para ${dataHoraBr(visita.dataHora)}.`);
+      await notificador.enviar(cliente, `Sua visita ao imóvel ${imovel.codigo} foi reagendada para ${dataHoraBr(visita.dataHora)}.`);
     }
     if (visita.status === 'Realizada' && anterior?.status !== 'Realizada') {
-      const proprietario = new ProprietarioRepositorio().buscarPorId(imovel.proprietarioId);
-      notificador.enviar(proprietario, `Feedback da visita ao seu imóvel ${imovel.codigo}: ${visita.feedback}`);
+      const proprietario = await new ProprietarioRepositorio().buscarPorId(imovel.proprietarioId);
+      await notificador.enviar(proprietario, `Feedback da visita ao seu imóvel ${imovel.codigo}: ${visita.feedback}`);
     }
   }
 }

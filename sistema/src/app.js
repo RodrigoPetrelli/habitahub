@@ -51,27 +51,31 @@ function montarRotas() {
   }
 
   roteador.get('/api/produto', () => ({ status: 200, corpo: config.paraCliente() }));
-  roteador.get('/api/notificacoes', () => ({ status: 200, corpo: new NotificacaoRepositorio().listar() }));
+  roteador.get('/api/notificacoes', async () => ({ status: 200, corpo: await new NotificacaoRepositorio().listar() }));
 
   // Ponto de variação VP4 – formatos de exportação (Strategy)
-  roteador.get('/api/relatorios/:tipo', (req, p) => {
+  roteador.get('/api/relatorios/:tipo', async (req, p) => {
     const Relatorio = relatorios[p.tipo];
     if (!Relatorio) return { status: 404, corpo: { mensagem: 'Relatório indisponível neste produto.' } };
     const formato = req.consulta.get('formato') || 'csv';
     const exportador = exportadorPara(formato);
     if (!exportador) return { status: 400, corpo: { mensagem: `O formato "${formato}" não está habilitado neste produto.` } };
-    const conteudo = new Relatorio().gerar(exportador, { status: req.consulta.get('status') || '' });
+    const conteudo = await new Relatorio().gerar(exportador, { status: req.consulta.get('status') || '' });
     return { status: 200, bruto: conteudo, tipo: exportador.tipoConteudo };
   });
 
   return roteador;
 }
 
-// Erros do SQLite viram mensagens que a tela consegue mostrar.
+// Erros do banco (SQLite ou PostgreSQL) viram mensagens que a tela consegue mostrar.
 function traduzirErroBanco(e) {
-  const unico = /UNIQUE constraint failed: \w+\.(\w+)/.exec(e.message);
-  if (unico) return new ErroValidacao({ [unico[1]]: 'Já existe um cadastro com este valor.' });
-  if (/FOREIGN KEY constraint failed/.test(e.message)) return new ErroAplicacao('O registro está ligado a outros cadastros.', 409);
+  const unicoSqlite = /UNIQUE constraint failed: \w+\.(\w+)/.exec(e.message);
+  const unicoPostgres = e.code === '23505' && /Key \((\w+)\)/.exec(e.detail || '');
+  const campo = (unicoSqlite || unicoPostgres || [])[1];
+  if (campo) return new ErroValidacao({ [campo]: 'Já existe um cadastro com este valor.' });
+  if (/FOREIGN KEY constraint failed/.test(e.message) || e.code === '23503') {
+    return new ErroAplicacao('O registro está ligado a outros cadastros.', 409);
+  }
   return null;
 }
 
@@ -100,11 +104,10 @@ function servirArquivo(caminho, res) {
   fs.createReadStream(arquivo).pipe(res);
 }
 
-function criarAplicacao({ produto, banco }) {
+async function criarAplicacao({ produto, banco }) {
   Configuracao.instancia().carregar(produto);
-  const db = Database.instancia().conectar(banco);
-  db.executar(fs.readFileSync(path.join(__dirname, 'infra', 'schema.sql'), 'utf8'));
-  popularSeVazio();
+  await Database.instancia().conectar(banco);
+  await popularSeVazio();
 
   const roteador = montarRotas();
 
@@ -127,7 +130,7 @@ function criarAplicacao({ produto, banco }) {
     try {
       req.corpo = ['POST', 'PUT'].includes(req.method) ? await lerCorpo(req) : {};
       req.consulta = url.searchParams;
-      const r = rota.handler(req, rota.params);
+      const r = await rota.handler(req, rota.params);
       if (r.bruto !== undefined) {
         res.writeHead(r.status, { 'Content-Type': r.tipo });
         res.end(r.bruto);

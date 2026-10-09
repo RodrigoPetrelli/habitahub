@@ -7,32 +7,56 @@ services:
       - "3100:80"
     restart: unless-stopped
 
-  # Mesma imagem, dois produtos da linha (LPS): só muda HABITAHUB_PRODUTO.
+  # Banco de dados em container próprio. Um servidor PostgreSQL com um banco
+  # por produto da linha. Credenciais só para desenvolvimento local.
+  banco:
+    image: postgres:17-alpine
+    container_name: habitahub-banco
+    environment:
+      POSTGRES_USER: habitahub
+      POSTGRES_PASSWORD: habitahub
+      POSTGRES_DB: habitahub_lana_mayan
+    ports:
+      - "5433:5432"
+    volumes:
+      - dados-banco:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U habitahub -d habitahub_lana_mayan"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Mesma imagem, dois produtos da linha (LPS): mudam o produto e o banco.
   sistema-lana-mayan:
     build: ./sistema
     image: habitahub-sistema
     container_name: habitahub-lana-mayan
     environment:
       HABITAHUB_PRODUTO: lana-mayan
+      HABITAHUB_BANCO_URL: postgres://habitahub:habitahub@banco:5432/habitahub_lana_mayan
     ports:
       - "3200:3200"
-    volumes:
-      - dados-lana-mayan:/app/dados
+    depends_on:
+      banco:
+        condition: service_healthy
     restart: unless-stopped
 
   sistema-corretor-autonomo:
     image: habitahub-sistema
-    depends_on:
-      - sistema-lana-mayan
     container_name: habitahub-corretor-autonomo
     environment:
       HABITAHUB_PRODUTO: corretor-autonomo
+      HABITAHUB_BANCO_URL: postgres://habitahub:habitahub@banco:5432/habitahub_corretor_autonomo
     ports:
       - "3201:3200"
-    volumes:
-      - dados-corretor-autonomo:/app/dados
+    depends_on:
+      banco:
+        condition: service_healthy
+      sistema-lana-mayan:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
-  dados-lana-mayan:
-  dados-corretor-autonomo:
+  dados-banco:

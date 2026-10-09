@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -19,10 +19,15 @@ const PropostaRepositorio = require('../src/repositorios/PropostaRepositorio');
 const NotificacaoRepositorio = require('../src/repositorios/NotificacaoRepositorio');
 const { ErroValidacao, ErroRegraNegocio } = require('../src/infra/erros');
 
-Configuracao.instancia().carregar('lana-mayan');
-Database.instancia().conectar(':memory:');
-Database.instancia().executar(fs.readFileSync(path.join(__dirname, '..', 'src', 'infra', 'schema.sql'), 'utf8'));
-popularSeVazio();
+// Sem HABITAHUB_BANCO_URL os testes usam SQLite em memória. Com ela, rodam
+// contra o PostgreSQL. Use um banco vazio, porque os testes gravam dados.
+before(async () => {
+  Configuracao.instancia().carregar('lana-mayan');
+  await Database.instancia().conectar(process.env.HABITAHUB_BANCO_URL || ':memory:');
+  await popularSeVazio();
+});
+
+after(() => Database.instancia().fechar());
 
 test('Singleton: sempre a mesma instância e construtor bloqueado', () => {
   assert.equal(Database.instancia(), Database.instancia());
@@ -58,35 +63,35 @@ test('Template Method (Validador): passos fixos e regras do cliente', () => {
   assert.deepEqual(Object.keys(ruim.erros).sort(), ['cpf', 'email', 'interesse', 'nome']);
 });
 
-test('Template Method (Repositorio): CRUD completo com ganchos', () => {
+test('Template Method (Repositorio): CRUD completo com ganchos', async () => {
   const repo = new ClienteRepositorio();
-  const criado = repo.salvar({ nome: 'Teste da Silva', cpf: '529.982.247-25', email: 't@t.com', interesse: 'Locação' });
+  const criado = await repo.salvar({ nome: 'Teste da Silva', cpf: '529.982.247-25', email: 't@t.com', interesse: 'Locação' });
   assert.ok(criado.id);
-  const alterado = repo.salvar({ telefone: '(41) 90000-0000' }, criado.id);
+  const alterado = await repo.salvar({ telefone: '(41) 90000-0000' }, criado.id);
   assert.equal(alterado.nome, 'Teste da Silva');
   assert.equal(alterado.telefone, '(41) 90000-0000');
-  assert.throws(() => repo.salvar({ email: 'invalido' }, criado.id), ErroValidacao);
-  repo.excluir(criado.id);
-  assert.equal(repo.buscarPorId(criado.id), null);
+  await assert.rejects(repo.salvar({ email: 'invalido' }, criado.id), ErroValidacao);
+  await repo.excluir(criado.id);
+  assert.equal(await repo.buscarPorId(criado.id), null);
 });
 
-test('Template Method (Repositorio): ganchos de regra de negócio', () => {
-  const imovel = new ImovelRepositorio().salvar({
+test('Template Method (Repositorio): ganchos de regra de negócio', async () => {
+  const imovel = await new ImovelRepositorio().salvar({
     titulo: 'Teste', tipo: 'Casa', finalidade: 'Venda', preco: 100000, cidade: 'Curitiba', uf: 'pr', proprietarioId: 1, corretorId: 1,
   });
   assert.match(imovel.codigo, /^HH-\d{4}$/);
   assert.equal(imovel.endereco.uf, 'PR');
-  assert.throws(() => new ProprietarioRepositorio().excluir(1), ErroRegraNegocio);
+  await assert.rejects(new ProprietarioRepositorio().excluir(1), ErroRegraNegocio);
 
-  const proposta = new PropostaRepositorio().salvar({ imovelId: imovel.id, clienteId: 1, valor: 95000 });
-  new PropostaRepositorio().salvar({ status: 'Aprovada' }, proposta.id);
-  assert.equal(new ImovelRepositorio().buscarPorId(imovel.id).status, 'Reservado');
+  const proposta = await new PropostaRepositorio().salvar({ imovelId: imovel.id, clienteId: 1, valor: 95000 });
+  await new PropostaRepositorio().salvar({ status: 'Aprovada' }, proposta.id);
+  assert.equal((await new ImovelRepositorio().buscarPorId(imovel.id)).status, 'Reservado');
 });
 
-test('Template Method (Relatorio) + Strategy (Exportador)', () => {
-  const csv = new RelatorioImoveis().gerar(new ExportadorCsv());
+test('Template Method (Relatorio) + Strategy (Exportador)', async () => {
+  const csv = await new RelatorioImoveis().gerar(new ExportadorCsv());
   assert.match(csv, /^﻿Código;Título/);
-  const json = JSON.parse(new RelatorioImoveis().gerar(new ExportadorJson(), { status: 'Disponível' }));
+  const json = JSON.parse(await new RelatorioImoveis().gerar(new ExportadorJson(), { status: 'Disponível' }));
   assert.ok(json.registros.every((r) => r.Status === 'Disponível'));
   assert.equal(exportadorPara('pdf'), null);
 });
@@ -96,10 +101,20 @@ test('Strategy: comissão por modalidade', () => {
   assert.equal(new ComissaoLocacao(1).calcular(2000), 2000);
 });
 
-test('Strategy: canais de notificação', () => {
+test('Strategy: canais de notificação', async () => {
   const pessoa = { email: 'a@b.com', telefone: '(41) 9' };
   assert.equal(new CanalEmail().destinatario(pessoa), 'a@b.com');
   assert.equal(new CanalWhatsApp().destinatario(pessoa), '(41) 9');
   assert.ok(new CanalSms().formatar('x'.repeat(300)).length <= 160);
-  assert.ok(new NotificacaoRepositorio().listar().every((n) => n.canal === 'whatsapp'));
+  assert.ok((await new NotificacaoRepositorio().listar()).every((n) => n.canal === 'whatsapp'));
+});
+
+test('Transação: erro no meio desfaz a gravação inteira', async () => {
+  const db = Database.instancia();
+  const antes = (await new ClienteRepositorio().listar()).length;
+  await assert.rejects(db.transacao(async () => {
+    await new ClienteRepositorio().salvar({ nome: 'Rollback', cpf: '111.444.777-35', email: 'r@r.com', interesse: 'Venda' });
+    throw new Error('falha proposital');
+  }), /falha proposital/);
+  assert.equal((await new ClienteRepositorio().listar()).length, antes);
 });

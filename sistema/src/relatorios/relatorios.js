@@ -16,9 +16,9 @@ class RelatorioImoveis extends Relatorio {
     return 'Carteira de imóveis';
   }
 
-  buscarDados() {
-    this.proprietarios = indexar(new ProprietarioRepositorio().listar());
-    this.corretores = indexar(new CorretorRepositorio().listar());
+  async buscarDados() {
+    this.proprietarios = indexar(await new ProprietarioRepositorio().listar());
+    this.corretores = indexar(await new CorretorRepositorio().listar());
     return new ImovelRepositorio().listar();
   }
 
@@ -52,10 +52,10 @@ class RelatorioVisitas extends Relatorio {
     return 'Visitas e feedbacks';
   }
 
-  buscarDados() {
-    this.imoveis = indexar(new ImovelRepositorio().listar());
-    this.clientes = indexar(new ClienteRepositorio().listar());
-    this.corretores = indexar(new CorretorRepositorio().listar());
+  async buscarDados() {
+    this.imoveis = indexar(await new ImovelRepositorio().listar());
+    this.clientes = indexar(await new ClienteRepositorio().listar());
+    this.corretores = indexar(await new CorretorRepositorio().listar());
     return new VisitaRepositorio().listar();
   }
 
@@ -89,9 +89,9 @@ class RelatorioPropostas extends Relatorio {
     return 'Propostas e comissões estimadas';
   }
 
-  buscarDados() {
-    this.imoveis = indexar(new ImovelRepositorio().listar());
-    this.clientes = indexar(new ClienteRepositorio().listar());
+  async buscarDados() {
+    this.imoveis = indexar(await new ImovelRepositorio().listar());
+    this.clientes = indexar(await new ClienteRepositorio().listar());
     return new PropostaRepositorio().listar();
   }
 

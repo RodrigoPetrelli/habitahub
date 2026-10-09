@@ -19,24 +19,25 @@ class CrudControlador {
     return this.repositorio.paraResposta(entidade);
   }
 
-  listar() {
-    return { status: 200, corpo: this.repositorio.listar().map((e) => this.#resposta(e)) };
+  async listar() {
+    const entidades = await this.repositorio.listar();
+    return { status: 200, corpo: await Promise.all(entidades.map((e) => this.#resposta(e))) };
   }
 
-  obter(id) {
-    return { status: 200, corpo: this.#resposta(this.repositorio.buscarOuFalhar(id)) };
+  async obter(id) {
+    return { status: 200, corpo: await this.#resposta(await this.repositorio.buscarOuFalhar(id)) };
   }
 
-  criar(dados) {
-    return { status: 201, corpo: this.#resposta(this.repositorio.salvar(dados)) };
+  async criar(dados) {
+    return { status: 201, corpo: await this.#resposta(await this.repositorio.salvar(dados)) };
   }
 
-  atualizar(id, dados) {
-    return { status: 200, corpo: this.#resposta(this.repositorio.salvar(dados, id)) };
+  async atualizar(id, dados) {
+    return { status: 200, corpo: await this.#resposta(await this.repositorio.salvar(dados, id)) };
   }
 
-  excluir(id) {
-    this.repositorio.excluir(id);
+  async excluir(id) {
+    await this.repositorio.excluir(id);
     return { status: 204 };
   }
 }

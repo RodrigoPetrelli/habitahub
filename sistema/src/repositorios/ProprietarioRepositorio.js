@@ -20,17 +20,17 @@ class ProprietarioRepositorio extends Repositorio {
     return 'nome';
   }
 
-  depoisDeSalvar(proprietario, anterior) {
+  async depoisDeSalvar(proprietario, anterior) {
     if (!anterior) {
-      Notificador.doProduto().enviar(proprietario, `Olá, ${proprietario.primeiroNome()}! Seu cadastro de proprietário foi criado. Você vai receber aqui as novidades dos seus imóveis.`);
+      await Notificador.doProduto().enviar(proprietario, `Olá, ${proprietario.primeiroNome()}! Seu cadastro de proprietário foi criado. Você vai receber aqui as novidades dos seus imóveis.`);
     }
   }
 
-  antesDeExcluir(proprietario) {
-    this.impedirSeUsado('imoveis', 'proprietario_id', proprietario.id, 'O proprietário tem imóveis cadastrados. Exclua ou transfira os imóveis antes.');
+  async antesDeExcluir(proprietario) {
+    await this.impedirSeUsado('imoveis', 'proprietario_id', proprietario.id, 'O proprietário tem imóveis cadastrados. Exclua ou transfira os imóveis antes.');
   }
 
-  paraResposta(proprietario) {
+  async paraResposta(proprietario) {
     return { ...proprietario, cpfMascarado: proprietario.cpfMascarado() };
   }
 }

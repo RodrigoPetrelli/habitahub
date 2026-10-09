@@ -19,9 +19,9 @@ class CorretorRepositorio extends Repositorio {
     return 'nome';
   }
 
-  antesDeExcluir(corretor) {
-    this.impedirSeUsado('imoveis', 'corretor_id', corretor.id, 'O corretor é responsável por imóveis. Desative-o em vez de excluir.');
-    this.impedirSeUsado('visitas', 'corretor_id', corretor.id, 'O corretor tem visitas registradas. Desative-o em vez de excluir.');
+  async antesDeExcluir(corretor) {
+    await this.impedirSeUsado('imoveis', 'corretor_id', corretor.id, 'O corretor é responsável por imóveis. Desative-o em vez de excluir.');
+    await this.impedirSeUsado('visitas', 'corretor_id', corretor.id, 'O corretor tem visitas registradas. Desative-o em vez de excluir.');
   }
 }
 

@@ -1,6 +1,6 @@
 // PADRÃO TEMPLATE METHOD (exemplo 3 de 3)
 // gerar() define o roteiro fixo de qualquer relatório:
-//   1. buscarDados()        passo abstrato: de onde vêm os registros
+//   1. buscarDados()        passo abstrato: de onde vêm os registros (assíncrono)
 //   2. filtrar()            gancho: por padrão mantém todos
 //   3. colunas()            passo abstrato: cabeçalho
 //   4. formatarLinha()      passo abstrato: um registro vira uma linha
@@ -8,8 +8,8 @@
 //   6. exportador.exportar  formato final, escolhido pelo padrão Strategy
 // Um relatório novo só implementa os passos; o roteiro e os formatos são reaproveitados.
 class Relatorio {
-  gerar(exportador, filtros = {}) {
-    const registros = this.filtrar(this.buscarDados(), filtros);
+  async gerar(exportador, filtros = {}) {
+    const registros = this.filtrar(await this.buscarDados(), filtros);
     const documento = {
       titulo: this.titulo(),
       colunas: this.colunas(),
@@ -23,7 +23,7 @@ class Relatorio {
     throw new Error(`${this.constructor.name} precisa implementar titulo().`);
   }
 
-  buscarDados() {
+  async buscarDados() {
     throw new Error(`${this.constructor.name} precisa implementar buscarDados().`);
   }
 
