@@ -18,7 +18,8 @@ const NotificacaoRepositorio = require('./repositorios/NotificacaoRepositorio');
 const { RelatorioImoveis, RelatorioVisitas, RelatorioPropostas } = require('./relatorios/relatorios');
 const { exportadorPara } = require('./estrategias/exportacao');
 
-const PUBLICO = path.join(__dirname, '..', 'public');
+// Front-end servido: public/ (código-fonte) ou dist/ (compactado por npm run build).
+let PUBLICO = path.join(__dirname, '..', 'public');
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 // Monta as rotas de acordo com as features do produto ativo. É aqui que a
@@ -104,7 +105,11 @@ function servirArquivo(caminho, res) {
   fs.createReadStream(arquivo).pipe(res);
 }
 
-async function criarAplicacao({ produto, banco }) {
+async function criarAplicacao({ produto, banco, front = 'public' }) {
+  PUBLICO = path.join(__dirname, '..', front === 'dist' ? 'dist' : 'public');
+  if (!fs.existsSync(path.join(PUBLICO, 'index.html'))) {
+    throw new Error(`Front-end "${front}" não encontrado. Rode "npm run build" antes.`);
+  }
   Configuracao.instancia().carregar(produto);
   await Database.instancia().conectar(banco);
   await popularSeVazio();

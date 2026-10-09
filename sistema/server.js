@@ -3,6 +3,7 @@
 // ou com a variável de ambiente HABITAHUB_PRODUTO.
 // Banco: HABITAHUB_BANCO_URL=postgres://... usa o PostgreSQL (container "banco");
 // sem ela, o sistema usa um arquivo SQLite em dados/<produto>.db.
+// Front-end: --front=dist (ou HABITAHUB_FRONT=dist) serve a versão compactada.
 const path = require('node:path');
 const { criarAplicacao } = require('./src/app');
 const Database = require('./src/infra/Database');
@@ -11,12 +12,13 @@ const argumento = (nome) => process.argv.find((a) => a.startsWith(`--${nome}=`))
 
 const produto = argumento('produto') || process.env.HABITAHUB_PRODUTO || 'lana-mayan';
 const porta = Number(argumento('porta') || process.env.PORT || 3200);
+const front = argumento('front') || process.env.HABITAHUB_FRONT || 'public';
 const banco = process.env.HABITAHUB_BANCO_URL || process.env.HABITAHUB_BANCO || path.join(__dirname, 'dados', `${produto}.db`);
 
-criarAplicacao({ produto, banco })
+criarAplicacao({ produto, banco, front })
   .then((servidor) => {
     servidor.listen(porta, () => {
-      console.log(`HabitaHub [${produto}] em http://localhost:${porta} – banco: ${Database.instancia().descricao}`);
+      console.log(`HabitaHub [${produto}] em http://localhost:${porta} – banco: ${Database.instancia().descricao} – front: ${front}`);
     });
   })
   .catch((e) => {

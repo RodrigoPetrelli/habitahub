@@ -6,7 +6,7 @@ O banco depende de onde o sistema roda:
 - **No Docker:** o banco é um **PostgreSQL em container próprio** (`habitahub-banco`).
 - **Sem Docker e nos testes:** o sistema usa o SQLite embutido no Node (`node:sqlite`), sem precisar instalar banco nenhum.
 
-A única dependência externa é o driver `pg`.
+A única dependência de produção é o driver `pg`. O `esbuild` entra só em desenvolvimento, para compactar o front-end.
 
 ## Como rodar
 
@@ -40,11 +40,26 @@ npm install
 npm start                 # produto "lana-mayan" em http://localhost:3200
 npm run start:autonomo    # produto "corretor-autonomo" (use --porta=3201 para rodar os dois)
 npm test                  # 10 testes automatizados (SQLite em memória)
+npm run build             # compacta o front-end em dist/ (npm run start:dist já serve essa versão)
+npm run medir-reuso       # tabela de economia de código por reuso
 ```
 
 - **Banco:** fica em `dados/<produto>.db` e recebe dados de demonstração na primeira execução. Para recomeçar do zero, apague o arquivo.
 - **PostgreSQL fora do Docker:** defina `HABITAHUB_BANCO_URL=postgres://usuario:senha@host:porta/banco`. A mesma variável faz o `npm test` rodar contra o PostgreSQL; use um banco vazio, porque os testes gravam dados.
-- **Outras opções:** `--produto=<id>`, `--porta=<n>`, `HABITAHUB_PRODUTO` e `PORT`.
+- **Outras opções:** `--produto=<id>`, `--porta=<n>`, `--front=dist`, `HABITAHUB_PRODUTO`, `HABITAHUB_FRONT` e `PORT`.
+
+---
+
+## Atividade 03 – Compactação de código focada em reuso
+
+O passo a passo e os números estão em [`COMPACTACAO.md`](COMPACTACAO.md). São duas técnicas:
+
+| Técnica | Comando | Resultado |
+|---|---|---|
+| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 942 linhas em vez de cerca de 2.521: 63% menos código |
+| Minificação e empacotamento (esbuild) | `npm run build` | 9 módulos JS viram 1 arquivo, 34% menor. A biblioteca reutilizável `dist/lib/tela-crud.min.js` ficou 40% menor |
+
+O Docker serve a versão compactada (`dist/`).
 
 ---
 
@@ -169,6 +184,8 @@ sistema/
 │   ├── estrategias/          Strategy: comissao, notificacao, exportacao
 │   ├── variabilidade/        modelo de features
 │   └── http/                 roteador e controlador CRUD genérico
-├── public/                   telas (HTML/CSS/JS, sem build)
+├── public/                   telas (HTML/CSS/JS, código-fonte)
+├── scripts/                  build.js (esbuild) e medir-reuso.js
+├── dist/                     front-end compactado (gerado, fora do git)
 └── test/                     testes (node --test)
 ```

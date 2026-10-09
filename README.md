@@ -8,7 +8,7 @@ O HabitaHub é um sistema de gestão para o setor imobiliário desenvolvido para
 
 ## Sistema
 
-A primeira versão funcional fica em [`sistema/`](sistema/README.md). Ela tem back-end Node.js, banco PostgreSQL em container próprio, 6 telas de CRUD e 7 tabelas. Também aplica os padrões Singleton, Template Method e Strategy e traz um exemplo de variabilidade com dois produtos da linha (LPS). Para rodar, use `docker compose up -d --build` ou, sem Docker, `cd sistema && npm install && npm start`, que usa SQLite local.
+A primeira versão funcional fica em [`sistema/`](sistema/README.md). Ela tem back-end Node.js, banco PostgreSQL em container próprio, 6 telas de CRUD e 7 tabelas. Também aplica os padrões Singleton, Template Method e Strategy e traz um exemplo de variabilidade com dois produtos da linha (LPS). A compactação de código focada em reuso está descrita em [`sistema/COMPACTACAO.md`](sistema/COMPACTACAO.md). Para rodar, use `docker compose up -d --build` ou, sem Docker, `cd sistema && npm install && npm start`, que usa SQLite local.
 
 ## Protótipo
 
