@@ -1,0 +1,17 @@
+{
+  "id": "lana-mayan",
+  "nome": "HabitaHub – Lana Mayan Negócios Imobiliários",
+  "descricao": "Produto completo para a imobiliária parceira: venda e locação, visitas, propostas e notificação por WhatsApp.",
+  "features": {
+    "visitas": true,
+    "propostas": true,
+    "modalidades": ["Venda", "Locação"],
+    "notificacao": "whatsapp",
+    "exportacao": ["csv", "html", "json"]
+  },
+  "parametros": {
+    "comissaoVendaPercentual": 6,
+    "comissaoLocacaoAlugueis": 1,
+    "corPrimaria": "#0f766e"
+  }
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HabitaHub</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <span class="logo">🏠 HabitaHub</span>
+      <span class="produto" id="produto-nome"></span>
+    </header>
+    <nav class="menu" id="menu"></nav>
+    <main class="conteudo" id="conteudo"><p class="muted">Carregando…</p></main>
+  </div>
+
+  <dialog id="dialogo" class="dialogo">
+    <form method="dialog" id="formulario" novalidate>
+      <h2 id="dialogo-titulo"></h2>
+      <div class="campos" id="campos"></div>
+      <p class="erro-geral" id="erro-geral"></p>
+      <div class="acoes">
+        <button type="button" class="btn" id="cancelar">Cancelar</button>
+        <button type="submit" class="btn primario">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="aviso" id="aviso" role="status"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

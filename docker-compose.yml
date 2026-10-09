@@ -6,3 +6,33 @@ services:
     ports:
       - "3100:80"
     restart: unless-stopped
+
+  # Mesma imagem, dois produtos da linha (LPS): só muda HABITAHUB_PRODUTO.
+  sistema-lana-mayan:
+    build: ./sistema
+    image: habitahub-sistema
+    container_name: habitahub-lana-mayan
+    environment:
+      HABITAHUB_PRODUTO: lana-mayan
+    ports:
+      - "3200:3200"
+    volumes:
+      - dados-lana-mayan:/app/dados
+    restart: unless-stopped
+
+  sistema-corretor-autonomo:
+    image: habitahub-sistema
+    depends_on:
+      - sistema-lana-mayan
+    container_name: habitahub-corretor-autonomo
+    environment:
+      HABITAHUB_PRODUTO: corretor-autonomo
+    ports:
+      - "3201:3200"
+    volumes:
+      - dados-corretor-autonomo:/app/dados
+    restart: unless-stopped
+
+volumes:
+  dados-lana-mayan:
+  dados-corretor-autonomo:

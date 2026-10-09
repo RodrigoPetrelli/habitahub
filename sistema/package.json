@@ -1,0 +1,14 @@
+{
+  "name": "habitahub-sistema",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HabitaHub – CRUDs com banco de dados, padrões de projeto e variabilidade (LPS)",
+  "main": "server.js",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node server.js",
+    "start:lana": "node server.js --produto=lana-mayan",
+    "start:autonomo": "node server.js --produto=corretor-autonomo",
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "corretor-autonomo",
+  "nome": "HabitaHub Essencial – Corretor Autônomo",
+  "descricao": "Produto enxuto para corretor autônomo: só venda, sem módulo de propostas e notificação por e-mail.",
+  "features": {
+    "visitas": true,
+    "propostas": false,
+    "modalidades": ["Venda"],
+    "notificacao": "email",
+    "exportacao": ["csv"]
+  },
+  "parametros": {
+    "comissaoVendaPercentual": 5,
+    "comissaoLocacaoAlugueis": 1,
+    "corPrimaria": "#1d4ed8"
+  }
+}
