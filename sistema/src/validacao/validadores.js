@@ -127,7 +127,23 @@ class ValidadorProposta extends Validador {
   }
 }
 
+class ValidadorOrganizacao extends Validador {
+  normalizar(dados) {
+    super.normalizar(dados);
+    if (dados.nome) dados.nome = dados.nome.replace(/\s+/g, ' ');
+    return dados;
+  }
+
+  camposObrigatorios() {
+    return { nome: 'Nome da organização' };
+  }
+
+  validarRegras(dados, erros) {
+    if (dados.nome && (dados.nome.length < 3 || dados.nome.length > 80)) erros.nome = 'Use de 3 a 80 caracteres.';
+  }
+}
+
 module.exports = {
-  ValidadorCorretor, ValidadorProprietario, ValidadorCliente,
+  ValidadorOrganizacao, ValidadorCorretor, ValidadorProprietario, ValidadorCliente,
   ValidadorImovel, ValidadorVisita, ValidadorProposta,
 };

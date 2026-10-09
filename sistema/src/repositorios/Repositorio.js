@@ -1,4 +1,5 @@
 const Database = require('../infra/Database');
+const { organizacaoAtual } = require('../infra/ContextoOrganizacao');
 const { ErroValidacao, ErroNaoEncontrado, ErroRegraNegocio } = require('../infra/erros');
 
 // PADRÃO TEMPLATE METHOD (exemplo 2 de 3)
@@ -11,6 +12,10 @@ const { ErroValidacao, ErroNaoEncontrado, ErroRegraNegocio } = require('../infra
 // As subclasses informam tabela(), modelo() e validador() e, se precisarem,
 // usam os ganchos antesDeSalvar, depoisDeSalvar, antesDeExcluir e paraResposta.
 // O SQL do CRUD fica escrito uma única vez, aqui, e serve ao SQLite e ao PostgreSQL.
+//
+// Cada registro pertence a uma organização (coluna organizacao_id). O SQL daqui
+// filtra todas as leituras e gravações pela organização ativa (ContextoOrganizacao),
+// então nenhuma subclasse consegue ler ou alterar dados de outra organização.
 class Repositorio {
   constructor() {
     this.db = Database.instancia();
@@ -34,6 +39,11 @@ class Repositorio {
     return 'id DESC';
   }
 
+  // false = tabela do sistema inteiro, sem organizacao_id (a própria tabela organizacoes).
+  porOrganizacao() {
+    return true;
+  }
+
   async antesDeSalvar(entidade, anterior) {}
 
   async depoisDeSalvar(entidade, anterior) {}
@@ -47,14 +57,16 @@ class Repositorio {
 
   // ---------- Operações fixas ----------
   async listar() {
-    const linhas = await this.db.todos(`SELECT * FROM ${this.tabela()} ORDER BY ${this.ordenacao()}`);
+    const { condicao, parametros } = this.#daOrganizacao();
+    const linhas = await this.db.todos(`SELECT * FROM ${this.tabela()} WHERE ${condicao} ORDER BY ${this.ordenacao()}`, parametros);
     return linhas.map((linha) => this.modelo().deLinha(linha));
   }
 
   async buscarPorId(id) {
     const numero = Number(id);
     if (!Number.isInteger(numero)) return null;
-    const linha = await this.db.um(`SELECT * FROM ${this.tabela()} WHERE id = ?`, [numero]);
+    const { condicao, parametros } = this.#daOrganizacao();
+    const linha = await this.db.um(`SELECT * FROM ${this.tabela()} WHERE id = ? AND ${condicao}`, [numero, ...parametros]);
     return linha ? this.modelo().deLinha(linha) : null;
   }
 
@@ -93,7 +105,8 @@ class Repositorio {
   async excluir(id) {
     const entidade = await this.buscarOuFalhar(id);
     await this.antesDeExcluir(entidade);
-    await this.db.rodar(`DELETE FROM ${this.tabela()} WHERE id = ?`, [entidade.id]);
+    const { condicao, parametros } = this.#daOrganizacao();
+    await this.db.rodar(`DELETE FROM ${this.tabela()} WHERE id = ? AND ${condicao}`, [entidade.id, ...parametros]);
     return entidade;
   }
 
@@ -106,9 +119,16 @@ class Repositorio {
     if (await this.contar(tabela, `${coluna} = ?`, [id]) > 0) throw new ErroRegraNegocio(mensagem);
   }
 
+  // Filtro da organização ativa. Sem organização ativa, organizacaoAtual() lança erro.
+  #daOrganizacao() {
+    return this.porOrganizacao()
+      ? { condicao: 'organizacao_id = ?', parametros: [organizacaoAtual()] }
+      : { condicao: '1 = 1', parametros: [] };
+  }
+
   // RETURNING funciona no PostgreSQL e no SQLite (3.35+).
   async #inserir(entidade) {
-    const linha = entidade.paraLinha();
+    const linha = this.porOrganizacao() ? { ...entidade.paraLinha(), organizacao_id: organizacaoAtual() } : entidade.paraLinha();
     const colunas = Object.keys(linha);
     const sql = `INSERT INTO ${this.tabela()} (${colunas.join(', ')}) VALUES (${colunas.map(() => '?').join(', ')}) RETURNING id`;
     return Number((await this.db.um(sql, Object.values(linha))).id);
@@ -117,8 +137,9 @@ class Repositorio {
   async #atualizar(entidade) {
     const linha = entidade.paraLinha();
     const colunas = Object.keys(linha);
-    const sql = `UPDATE ${this.tabela()} SET ${colunas.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`;
-    await this.db.rodar(sql, [...Object.values(linha), entidade.id]);
+    const { condicao, parametros } = this.#daOrganizacao();
+    const sql = `UPDATE ${this.tabela()} SET ${colunas.map((c) => `${c} = ?`).join(', ')} WHERE id = ? AND ${condicao}`;
+    await this.db.rodar(sql, [...Object.values(linha), entidade.id, ...parametros]);
   }
 }
 

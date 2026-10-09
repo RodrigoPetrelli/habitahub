@@ -69,7 +69,7 @@ async function telaInicio() {
       ? el('div', { class: 'alert info row between' },
         el('span', {}, aguardando === 1 ? '1 corretor criou uma conta e aguarda aprovação.' : `${aguardando} corretores criaram uma conta e aguardam aprovação.`),
         el('a', { class: 'btn btn-sm', href: '#/corretores' }, 'Revisar cadastros'))
-      : null,
+      : '', // replaceChildren escreveria null como texto
     el('div', { class: 'grid grid-4' },
       kpi('Imóveis disponíveis', disponiveis, `de ${listaImoveis.length}`),
       kpi('Clientes', listaClientes.length),
@@ -162,11 +162,12 @@ function mostrarAcesso({ aviso, sucesso } = {}) {
     document.title = `Criar conta · HabitaHub – ${produto.id}`;
     montarCadastro(telaLogin, {
       produto,
-      aoConcluir: (email) => {
+      aoConcluir: (resposta) => {
+        if (resposta.usuario) { mostrarSistema(resposta.usuario); return; } // criou a organização: já entra
         history.replaceState(null, '', '#/login');
-        mostrarAcesso({ sucesso: `Cadastro enviado para aprovação. Quando um administrador liberar o acesso, ${email} vai receber um aviso e você poderá entrar.` });
+        mostrarAcesso({ sucesso: `Cadastro enviado para aprovação de ${resposta.organizacao.nome}. Quando um administrador liberar o acesso, ${resposta.email} vai receber um aviso e você poderá entrar.` });
       },
-    });
+    }).catch((e) => telaLogin.replaceChildren(el('div', { class: 'alert danger' }, `Não foi possível abrir o cadastro: ${e.message}`)));
   } else {
     document.title = `Entrar · HabitaHub – ${produto.id}`;
     montarLogin(telaLogin, { produto, aviso, sucesso, aoEntrar: mostrarSistema });
@@ -180,7 +181,8 @@ async function mostrarSistema(logado) {
   telaLogin.replaceChildren();
   document.getElementById('usuario').replaceChildren(
     el('span', { class: 'avatar' }, iniciais(usuario.nome)),
-    el('span', { class: 'nome' }, el('strong', {}, usuario.nome), el('br'), el('span', { class: 'small muted' }, usuario.administrador ? 'Administrador' : 'Corretor')));
+    el('span', { class: 'nome' }, el('strong', {}, usuario.nome), el('br'),
+      el('span', { class: 'small muted' }, `${usuario.administrador ? 'Administrador' : 'Corretor'} · ${usuario.organizacao.nome}`)));
   shell.classList.remove('hidden');
   window.scrollTo(0, 0);
   document.title = `HabitaHub – ${produto.id}`;

@@ -136,8 +136,25 @@ function medidorDeForca(entrada) {
   return medidor;
 }
 
-// Chama aoConcluir(email) quando o cadastro é enviado.
-export function montarCadastro(container, { produto, aoConcluir }) {
+// Os dois jeitos de entrar no HabitaHub. Quem cria a organização vira o
+// administrador dela; quem entra numa existente espera a aprovação de lá.
+const MODOS = {
+  criar: {
+    titulo: 'Criar uma organização',
+    texto: 'Sou corretor autônomo ou estou trazendo uma imobiliária nova. Você vira o administrador e entra na hora.',
+    botao: 'Criar conta e entrar',
+  },
+  entrar: {
+    titulo: 'Entrar numa organização',
+    texto: 'Minha imobiliária já usa o HabitaHub. Um administrador dela aprova o seu cadastro.',
+    botao: 'Enviar para aprovação',
+  },
+};
+
+// Chama aoConcluir(resposta) quando o cadastro é enviado. Se a organização foi
+// criada, resposta.usuario traz o usuário já logado.
+export async function montarCadastro(container, { produto, aoConcluir }) {
+  const organizacoes = await api('GET', '/api/organizacoes').catch(() => []);
   const erro = alerta();
   const senha = campoSenha({ id: 'cad-senha', name: 'senha', autocomplete: 'new-password' });
   const confirmacao = campoSenha({ id: 'cad-confirmacao', name: 'confirmacao', autocomplete: 'new-password' });
@@ -150,23 +167,47 @@ export function montarCadastro(container, { produto, aoConcluir }) {
     el('span', { class: 'error-msg' }));
   const texto = (nome, atributos) => el('input', { class: 'input', id: `cad-${nome}`, name: nome, ...atributos });
 
+  // ---------- Organização ----------
+  const modoAtual = () => form.elements.modo.value;
+  const opcaoModo = (valor) => el('label', { class: 'acesso-modo' },
+    el('input', { type: 'radio', name: 'modo', value: valor, disabled: valor === 'entrar' && !organizacoes.length }),
+    el('span', {}, el('strong', {}, MODOS[valor].titulo), el('span', { class: 'small muted' }, MODOS[valor].texto)));
+  const modos = el('fieldset', { class: 'acesso-modos field', 'data-campo': 'modo' },
+    el('legend', {}, 'Como você vai usar o HabitaHub?'),
+    opcaoModo('criar'), opcaoModo('entrar'),
+    el('span', { class: 'error-msg' }));
+  const campoNovaOrganizacao = campo('novaOrganizacao', 'Nome da organização', texto('novaOrganizacao', { autocomplete: 'organization', maxlength: 80, placeholder: 'Ex.: Ana Souza Corretora de Imóveis' }),
+    { dica: 'O nome que a sua equipe vai ver. Corretor autônomo pode usar o próprio nome.' });
+  const campoOrganizacao = campo('organizacaoId', 'Organização', el('select', { class: 'input', id: 'cad-organizacaoId', name: 'organizacaoId' },
+    el('option', { value: '' }, 'Escolha…'),
+    organizacoes.map((o) => el('option', { value: o.id }, o.nome))));
+  const mostrarModo = () => {
+    campoNovaOrganizacao.classList.toggle('hidden', modoAtual() !== 'criar');
+    campoOrganizacao.classList.toggle('hidden', modoAtual() !== 'entrar');
+    enviar.textContent = MODOS[modoAtual()]?.botao || 'Criar conta';
+  };
+
   const marcarErros = (form, erros) => {
     form.querySelectorAll('.field[data-campo]').forEach((c) => {
       const msg = erros[c.dataset.campo] || '';
-      c.querySelector('.input').classList.toggle('invalid', Boolean(msg));
+      c.classList.toggle('invalid', Boolean(msg));
+      c.querySelector('.input')?.classList.toggle('invalid', Boolean(msg));
       c.querySelector('.error-msg').textContent = msg;
     });
-    form.querySelector('.invalid')?.focus();
+    form.querySelector('.input.invalid, .acesso-modos.invalid input:not(:disabled)')?.focus();
   };
 
-  const form = el('form', { class: 'form', novalidate: true, onsubmit: async (e) => {
+  const form = el('form', { class: 'form', novalidate: true, onchange: (e) => { if (e.target.name === 'modo') mostrarModo(); }, onsubmit: async (e) => {
     e.preventDefault();
     erro.classList.add('hidden');
     const dados = Object.fromEntries(['nome', 'email', 'telefone', 'creci'].map((n) => [n, form.elements[n].value.trim()]));
     dados.senha = senha.entrada.value;
+    if (modoAtual() === 'criar') dados.novaOrganizacao = form.elements.novaOrganizacao.value.trim();
+    if (modoAtual() === 'entrar') dados.organizacaoId = Number(form.elements.organizacaoId.value) || null;
 
     // Conferências que dão para fazer aqui; as demais regras vêm do servidor.
     const erros = {};
+    if (!modoAtual()) erros.modo = 'Escolha uma das opções.';
     if (!dados.senha) erros.senha = 'Senha é obrigatória.';
     else if (!senhaForte(dados.senha)) erros.senha = 'Use 8 ou mais caracteres, com letras e números.';
     if (confirmacao.entrada.value !== dados.senha) erros.confirmacao = 'As senhas não conferem.';
@@ -174,8 +215,7 @@ export function montarCadastro(container, { produto, aoConcluir }) {
     if (Object.keys(erros).length) return;
 
     try {
-      await ocupado(enviar, 'Enviando…', api('POST', '/api/cadastro', dados));
-      aoConcluir(dados.email);
+      aoConcluir(await ocupado(enviar, 'Enviando…', api('POST', '/api/cadastro', dados)));
     } catch (falha) {
       marcarErros(form, falha.erros || {});
       mostrarAlerta(erro, falha.message);
@@ -183,6 +223,9 @@ export function montarCadastro(container, { produto, aoConcluir }) {
   } },
   erro,
   el('div', { class: 'form-grid' },
+    modos,
+    campoNovaOrganizacao,
+    campoOrganizacao,
     campo('nome', 'Nome completo', texto('nome', { autocomplete: 'name' })),
     campo('email', 'E-mail', texto('email', { type: 'email', autocomplete: 'email', placeholder: 'voce@exemplo.com' }), { largura: 'metade' }),
     campo('telefone', 'Telefone / WhatsApp', texto('telefone', { type: 'tel', autocomplete: 'tel', placeholder: '(41) 99999-0000' }), { largura: 'metade' }),
@@ -197,8 +240,11 @@ export function montarCadastro(container, { produto, aoConcluir }) {
     marca(produto),
     el('div', { class: 'card' },
       el('h2', {}, 'Criar conta de corretor'),
-      el('p', { class: 'muted' }, 'Depois do envio, um administrador da imobiliária precisa aprovar o seu cadastro. Você vai receber um aviso quando o acesso for liberado.'),
+      el('p', { class: 'muted' }, 'Cada organização (imobiliária ou corretor autônomo) tem os próprios imóveis, clientes e equipe, e só ela os vê.'),
       form),
     el('p', { class: 'acesso-center' }, 'Já tem conta? ', el('a', { href: '#/login' }, 'Entrar'))));
-  form.elements.nome.focus();
+  // Sem organização cadastrada, só resta criar uma.
+  if (!organizacoes.length) form.elements.modo.value = 'criar';
+  mostrarModo();
+  (form.querySelector('input[name="modo"]:checked') ? form.elements.novaOrganizacao : form.querySelector('input[name="modo"]')).focus();
 }

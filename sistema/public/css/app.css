@@ -73,6 +73,17 @@ p { margin: 0 0 .75em; }
 .acesso-center { text-align: center; margin-top: 16px; }
 .acesso-acoes { margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border); }
 /* Indicador de força da senha (mesmo do protótipo) */
+/* "Criar conta": criar uma organização ou entrar numa existente. */
+.acesso-modos { gap: 8px; border: 0; padding: 0; min-width: 0; }
+.acesso-modos legend { font-weight: 600; font-size: 13px; padding: 0; margin-bottom: 6px; }
+.acesso-modo { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
+.acesso-modo:hover { background: var(--surface-2); }
+.acesso-modo:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.acesso-modo:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.acesso-modo input { margin: 3px 0 0; width: 16px; height: 16px; flex: none; accent-color: var(--primary); }
+.acesso-modo strong { display: block; margin-bottom: 2px; }
+.acesso-modos.invalid .acesso-modo { border-color: var(--danger); }
+
 .acesso-meter { margin: -4px 0 12px; grid-column: 1 / -1; }
 .acesso-meter-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 4px; }
 .acesso-meter-bar span { height: 6px; border-radius: 3px; background: var(--border); }

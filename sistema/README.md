@@ -39,7 +39,7 @@ cd sistema
 npm install
 npm start                 # produto "lana-mayan" em http://localhost:3200
 npm run start:autonomo    # produto "corretor-autonomo" (use --porta=3201 para rodar os dois)
-npm test                  # 19 testes automatizados (SQLite em memória)
+npm test                  # 22 testes automatizados (SQLite em memória)
 npm run build             # compacta o front-end em dist/ (npm run start:dist já serve essa versão)
 npm run medir-reuso       # tabela de economia de código por reuso
 ```
@@ -65,7 +65,7 @@ O Docker serve a versão compactada (`dist/`).
 
 ## Atividade 01 – Classes principais e padrões de projeto (Opção 01)
 
-### Classes principais (11), em `src/modelos/`
+### Classes principais (12), em `src/modelos/`
 
 | Classe | Atributos principais | Métodos principais |
 |---|---|---|
@@ -80,6 +80,7 @@ O Docker serve a versão compactada (`dist/`).
 | `Contrato` | numero, propostaId, imovelId, tipo, valor, inicio, termino, assinaturas | aPartirDaProposta, adicionarAssinatura, estaAssinadoPor, duracaoEmMeses |
 | `Avaliacao` | visitaId, corretorId, nota, comentario, anonimo | ehPositiva, autorExibido, media |
 | `Notificacao` | canal, destinatario, mensagem, enviadoEm | resumo |
+| `Organizacao` | nome, criadoEm | deLinha, paraLinha (imobiliária ou corretor autônomo dono dos cadastros) |
 
 `Contrato` e `Avaliacao` ainda não têm tabela; elas entram nas próximas etapas.
 
@@ -125,9 +126,13 @@ Regras de negócio que aparecem nas telas:
 
 ### Login
 
-O sistema só abre depois do login. Quem entra são os **corretores**. Há dois jeitos de ter uma conta:
-- **Criar conta (`#/cadastro`, link na tela de login):** o próprio corretor informa nome, e-mail, telefone, CRECI e senha, com o indicador de força do protótipo. A conta nasce **aguardando aprovação** e não entra no sistema. Os administradores recebem uma notificação, e o Painel deles mostra um aviso com o botão "Revisar cadastros". Para aprovar, o administrador edita o corretor e marca "Corretor ativo". O novo corretor recebe um aviso de que foi aprovado. São aceitas no máximo 5 contas por IP a cada hora.
-- **Cadastro pelo administrador:** o administrador cria o corretor na tela Corretores e define a senha ali.
+O sistema só abre depois do login. Quem entra são os **corretores**, e cada corretor pertence a uma **organização** (veja "Organizações" abaixo). Há dois jeitos de ter uma conta:
+- **Criar conta (`#/cadastro`, link na tela de login):** o próprio corretor informa nome, e-mail, telefone, CRECI e senha, com o indicador de força do protótipo. Antes, ele escolhe uma de duas opções:
+  - **Criar uma organização:** é o caminho do corretor autônomo ou de uma imobiliária nova. O corretor informa o nome da organização. A conta já nasce **ativa e administradora** dessa organização, e ele entra no sistema na hora.
+  - **Entrar numa organização:** o corretor escolhe a organização numa lista. A conta nasce **aguardando aprovação** e não entra no sistema. Os administradores *daquela* organização recebem uma notificação, e o Painel deles mostra um aviso com o botão "Revisar cadastros". Para aprovar, o administrador edita o corretor e marca "Corretor ativo". O novo corretor recebe um aviso de que foi aprovado.
+
+  São aceitas no máximo 5 contas por IP a cada hora.
+- **Cadastro pelo administrador:** o administrador cria o corretor na tela Corretores e define a senha ali. O corretor entra na organização do administrador.
 
 | Conta de demonstração | Perfil | E-mail | Senha |
 |---|---|---|---|
@@ -146,21 +151,33 @@ O sistema só abre depois do login. Quem entra são os **corretores**. Há dois 
 
 - **Onde as regras ficam:** o servidor confere tudo em `src/seguranca/AutorizacaoCorretores.js`, que o `CrudControlador` chama antes de cada ação e que nega com 403. A tela só esconde os botões e os campos que o usuário não pode usar.
 - **Corretor comum não cria corretores:** sem essa regra, ele criaria uma conta já ativa e pularia a aprovação.
-- **Sempre há administrador:** o administrador não pode se desativar, se excluir nem tirar o próprio perfil. Se o banco iniciar sem nenhum administrador ativo, como acontece em bancos criados antes do perfil existir, o corretor ativo mais antigo vira administrador.
-- **Avisos:** só os administradores recebem a notificação de conta nova, e só eles veem o aviso "Revisar cadastros" no Painel.
+- **Sempre há administrador:** o administrador não pode se desativar, se excluir nem tirar o próprio perfil. Se, ao iniciar, uma organização estiver sem nenhum administrador ativo, como acontece em bancos criados antes do perfil existir, o corretor ativo mais antigo dela vira administrador.
+- **Avisos:** só os administradores da organização recebem a notificação de conta nova, e só eles veem o aviso "Revisar cadastros" no Painel.
 
 - **Senha:** fica só como hash scrypt com sal aleatório, na coluna `corretores.senha_hash`, e nunca sai da API. Ela precisa ter 8 ou mais caracteres, com letras e números (a mesma regra do protótipo). No formulário do corretor, deixar a senha em branco mantém a atual. Um corretor sem senha não consegue entrar.
 - **Sessão:** é um token aleatório num cookie `HttpOnly` e `SameSite=Strict`, válido por 8 horas. As sessões ficam na memória do servidor, então reiniciar o servidor pede login de novo.
-- **Rotas protegidas:** sem sessão, a API responde 401. Só ficam abertas `POST /api/login`, `POST /api/logout`, `POST /api/cadastro`, `GET /api/sessao` e `GET /api/produto`, que a tela de login usa para mostrar o nome e a cor do produto.
+- **Rotas protegidas:** sem sessão, a API responde 401. Só ficam abertas `POST /api/login`, `POST /api/logout`, `POST /api/cadastro`, `GET /api/sessao`, `GET /api/organizacoes` (a lista do "Criar conta") e `GET /api/produto`, que a tela de login usa para mostrar o nome e a cor do produto.
 - **Aguardando aprovação × desativado:** a coluna `corretores.aguardando_aprovacao` separa os dois casos, e cada um tem a sua mensagem no login. A marca some na primeira ativação, então desativar alguém depois não o faz voltar a "aguardando".
 - **Perda do acesso:** a sessão termina na hora se o corretor for desativado ou excluído ou se a senha dele mudar. A tela volta sozinha para o login.
 - **Tentativas erradas:** depois de 5 senhas erradas para o mesmo e-mail, o login fica bloqueado por 5 minutos. A mensagem de erro é a mesma para e-mail inexistente e senha errada.
 - **Bancos antigos:** bancos criados antes do login ganham as colunas `senha_hash`, `aguardando_aprovacao` e `administrador` ao iniciar, e as contas de demonstração recebem a senha `demo1234`.
 - **Código:** `src/seguranca/` (senhas e sessões), rotas de acesso em `src/app.js`, criação de conta em `CorretorRepositorio.criarConta()` e telas de login e de criar conta em `public/js/acesso.js`.
 
-### Banco de dados (7 tabelas)
+### Organizações
 
-O esquema está em `src/infra/schema.postgres.sql`, com uma cópia equivalente para SQLite em `schema.sqlite.sql`. As tabelas são `corretores`, `proprietarios`, `clientes` e `imoveis` (que referencia proprietário e corretor), `visitas` (que referencia imóvel, cliente e corretor), `propostas` (que referencia imóvel e cliente) e `notificacoes`.
+Uma organização é uma imobiliária ou um corretor autônomo. Várias organizações usam o mesmo sistema e o mesmo banco, mas cada uma só vê e altera os próprios corretores, proprietários, clientes, imóveis, visitas, propostas, notificações e relatórios.
+
+- **Como o isolamento funciona:** todas as tabelas de cadastro têm a coluna `organizacao_id`. Antes de cada rota protegida, o servidor abre o contexto da organização do corretor logado (`src/infra/ContextoOrganizacao.js`). O `Repositorio` filtra todo SELECT, UPDATE e DELETE por ela e grava a organização em todo INSERT. Um id de outra organização responde 404, como se não existisse.
+- **Falha segura:** um repositório usado fora de uma organização lança erro, em vez de enxergar o banco inteiro.
+- **Referências:** imóvel, visita e proposta só aceitam corretor, proprietário, cliente e imóvel da mesma organização.
+- **Únicos por organização:** CPF de proprietário e de cliente e o código do imóvel. Duas imobiliárias podem atender o mesmo proprietário, e cada organização tem a sua sequência `HH-0001`, `HH-0002`... E-mail e CRECI do corretor continuam únicos no sistema todo, porque o login é feito pelo e-mail.
+- **Demonstração:** os dados de demonstração ficam na organização `organizacaoPadrao` do produto ("Lana Mayan Negócios Imobiliários" ou "Carla Mendes Corretora de Imóveis").
+- **Bancos antigos:** ao iniciar, os bancos criados antes das organizações ganham a coluna `organizacao_id`, e todos os registros passam para a organização padrão do produto. O UNIQUE antigo do CPF e do código sai (no SQLite, a tabela é recriada com os mesmos dados).
+- **Relação com a LPS:** o produto (features) continua sendo escolhido por instalação. Todas as organizações de uma instalação usam as features daquele produto.
+
+### Banco de dados (8 tabelas)
+
+O esquema está em `src/infra/schema.postgres.sql`, com uma cópia equivalente para SQLite em `schema.sqlite.sql`. As tabelas são `organizacoes`, `corretores`, `proprietarios`, `clientes` e `imoveis` (que referencia proprietário e corretor), `visitas` (que referencia imóvel, cliente e corretor), `propostas` (que referencia imóvel e cliente) e `notificacoes`. Todas, menos `organizacoes`, referenciam a organização dona do registro.
 As chaves estrangeiras são verificadas nos dois bancos. O esquema é criado ao iniciar o sistema (`CREATE TABLE IF NOT EXISTS`), e a escolha do driver fica em `src/infra/bancos/`.
 
 ### Variabilidade (LPS)
@@ -201,7 +218,8 @@ Parâmetros: % de comissão de venda, nº de aluguéis na locação, cor da marc
 
 - **Tempo de vinculação:** na carga do sistema (*load time*), pelo parâmetro `--produto` ou pela variável `HABITAHUB_PRODUTO`.
 - **Verificação:** antes de subir, `Configuracao.carregar()` valida o produto contra o modelo de features. Um produto com `"propostas": true` e `"visitas": false`, por exemplo, nem inicia.
-- **Novo produto:** basta criar um novo JSON em `produtos/`, sem alterar código.
+- **Novo produto:** basta criar um novo JSON em `produtos/`, sem alterar código. Além das features, o JSON informa `organizacaoPadrao`, a organização dos dados de demonstração.
+- **Nova organização:** não precisa de produto novo. Ela é criada pelo próprio corretor, em "Criar conta".
 
 ## Estrutura
 
@@ -211,8 +229,8 @@ sistema/
 ├── produtos/                 produtos da linha (configurações de features)
 ├── src/
 │   ├── app.js                rotas montadas conforme as features
-│   ├── infra/                Database, Configuracao (Singletons), drivers (bancos/), esquemas, seed, erros
-│   ├── modelos/              11 classes de domínio
+│   ├── infra/                Database, Configuracao (Singletons), ContextoOrganizacao, drivers (bancos/), esquemas, seed, erros
+│   ├── modelos/              12 classes de domínio
 │   ├── validacao/            Template Method 1
 │   ├── repositorios/         Template Method 2
 │   ├── relatorios/           Template Method 3

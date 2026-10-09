@@ -9,6 +9,9 @@ const PostgresDriver = require('./bancos/PostgresDriver');
 // Database.instancia() e compartilham o mesmo driver: o pool do PostgreSQL
 // (container "banco" no docker compose) ou o arquivo SQLite local.
 class Database {
+  // Tabelas cujos registros pertencem a uma organização (coluna organizacao_id).
+  static TABELAS_DA_ORGANIZACAO = ['corretores', 'proprietarios', 'clientes', 'imoveis', 'visitas', 'propostas', 'notificacoes'];
+
   static #instancia = null;
   static #chave = Symbol('Database');
 
@@ -40,11 +43,13 @@ class Database {
 
   // Bancos criados antes de uma coluna existir não passam pelo CREATE TABLE de
   // novo: aqui a coluna é acrescentada. Se ela já existe, o ALTER falha e é ignorado.
+  // Os registros antigos, sem organização, são adotados por seed.adotarDadosSemOrganizacao().
   async #migrar() {
     const colunas = [
       ['corretores', 'senha_hash', 'TEXT'],
       ['corretores', 'aguardando_aprovacao', 'INTEGER NOT NULL DEFAULT 0'],
       ['corretores', 'administrador', 'INTEGER NOT NULL DEFAULT 0'],
+      ...Database.TABELAS_DA_ORGANIZACAO.map((tabela) => [tabela, 'organizacao_id', 'INTEGER REFERENCES organizacoes(id)']),
     ];
     for (const [tabela, coluna, tipo] of colunas) {
       try {
@@ -52,6 +57,12 @@ class Database {
       } catch (e) {
         if (!/duplicate column|already exists/i.test(e.message)) throw e;
       }
+    }
+    // CPF e código do imóvel eram únicos no banco inteiro; agora são únicos dentro
+    // da organização (duas imobiliárias podem atender o mesmo proprietário).
+    for (const [tabela, coluna] of [['proprietarios', 'cpf'], ['clientes', 'cpf'], ['imoveis', 'codigo']]) {
+      await this.#driver.removerUnico(tabela, coluna);
+      await this.#driver.executar(`CREATE UNIQUE INDEX IF NOT EXISTS ${tabela}_organizacao_${coluna} ON ${tabela} (organizacao_id, ${coluna})`);
     }
   }
 

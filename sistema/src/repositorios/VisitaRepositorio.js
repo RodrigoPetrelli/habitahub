@@ -6,6 +6,7 @@ const { ErroRegraNegocio } = require('../infra/erros');
 const ImovelRepositorio = require('./ImovelRepositorio');
 const ClienteRepositorio = require('./ClienteRepositorio');
 const ProprietarioRepositorio = require('./ProprietarioRepositorio');
+const CorretorRepositorio = require('./CorretorRepositorio');
 
 const dataHoraBr = (iso) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -29,6 +30,9 @@ class VisitaRepositorio extends Repositorio {
   async antesDeSalvar(visita, anterior) {
     const imovel = await new ImovelRepositorio().buscarPorId(visita.imovelId);
     if (!imovel) throw new ErroRegraNegocio('Imóvel não encontrado.');
+    // Os repositórios só enxergam a organização ativa: um id de outra organização não é encontrado.
+    if (!await new ClienteRepositorio().buscarPorId(visita.clienteId)) throw new ErroRegraNegocio('Cliente não encontrado.');
+    if (!await new CorretorRepositorio().buscarPorId(visita.corretorId)) throw new ErroRegraNegocio('Corretor não encontrado.');
     if (!anterior && !imovel.estaDisponivel()) {
       throw new ErroRegraNegocio(`O imóvel ${imovel.codigo} está "${imovel.status}" e não aceita novas visitas.`);
     }

@@ -26,6 +26,7 @@ class PropostaRepositorio extends Repositorio {
   async antesDeSalvar(proposta, anterior) {
     const imovel = await new ImovelRepositorio().buscarPorId(proposta.imovelId);
     if (!imovel) throw new ErroRegraNegocio('Imóvel não encontrado.');
+    if (!await new ClienteRepositorio().buscarPorId(proposta.clienteId)) throw new ErroRegraNegocio('Cliente não encontrado.');
     if (!anterior && !imovel.estaDisponivel()) {
       throw new ErroRegraNegocio(`O imóvel ${imovel.codigo} está "${imovel.status}" e não aceita propostas.`);
     }

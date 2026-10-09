@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const Configuracao = require('../src/infra/Configuracao');
 const Database = require('../src/infra/Database');
+const { naOrganizacao } = require('../src/infra/ContextoOrganizacao');
 const ModeloDeFeatures = require('../src/variabilidade/ModeloDeFeatures');
 const { ValidadorCliente } = require('../src/validacao/validadores');
 const { ComissaoVenda, ComissaoLocacao } = require('../src/estrategias/comissao');
@@ -25,11 +26,17 @@ const { ErroValidacao, ErroRegraNegocio, ErroAplicacao } = require('../src/infra
 
 // Sem HABITAHUB_BANCO_URL os testes usam SQLite em memória. Com ela, rodam
 // contra o PostgreSQL. Use um banco vazio, porque os testes gravam dados.
+let demo; // id da organização de demonstração (Lana Mayan)
+
 before(async () => {
   Configuracao.instancia().carregar('lana-mayan');
   await Database.instancia().conectar(process.env.HABITAHUB_BANCO_URL || ':memory:');
   await popularSeVazio();
+  demo = (await Database.instancia().um('SELECT id FROM organizacoes ORDER BY id')).id;
 });
+
+// Os repositórios só funcionam dentro de uma organização (como nas rotas do servidor).
+const naDemo = (fn) => () => naOrganizacao(demo, fn);
 
 after(() => Database.instancia().fechar());
 
@@ -67,7 +74,7 @@ test('Template Method (Validador): passos fixos e regras do cliente', () => {
   assert.deepEqual(Object.keys(ruim.erros).sort(), ['cpf', 'email', 'interesse', 'nome']);
 });
 
-test('Template Method (Repositorio): CRUD completo com ganchos', async () => {
+test('Template Method (Repositorio): CRUD completo com ganchos', naDemo(async () => {
   const repo = new ClienteRepositorio();
   const criado = await repo.salvar({ nome: 'Teste da Silva', cpf: '529.982.247-25', email: 't@t.com', interesse: 'Locação' });
   assert.ok(criado.id);
@@ -77,9 +84,9 @@ test('Template Method (Repositorio): CRUD completo com ganchos', async () => {
   await assert.rejects(repo.salvar({ email: 'invalido' }, criado.id), ErroValidacao);
   await repo.excluir(criado.id);
   assert.equal(await repo.buscarPorId(criado.id), null);
-});
+}));
 
-test('Template Method (Repositorio): ganchos de regra de negócio', async () => {
+test('Template Method (Repositorio): ganchos de regra de negócio', naDemo(async () => {
   const imovel = await new ImovelRepositorio().salvar({
     titulo: 'Teste', tipo: 'Casa', finalidade: 'Venda', preco: 100000, cidade: 'Curitiba', uf: 'pr', proprietarioId: 1, corretorId: 1,
   });
@@ -90,30 +97,30 @@ test('Template Method (Repositorio): ganchos de regra de negócio', async () => 
   const proposta = await new PropostaRepositorio().salvar({ imovelId: imovel.id, clienteId: 1, valor: 95000 });
   await new PropostaRepositorio().salvar({ status: 'Aprovada' }, proposta.id);
   assert.equal((await new ImovelRepositorio().buscarPorId(imovel.id)).status, 'Reservado');
-});
+}));
 
-test('Template Method (Relatorio) + Strategy (Exportador)', async () => {
+test('Template Method (Relatorio) + Strategy (Exportador)', naDemo(async () => {
   const csv = await new RelatorioImoveis().gerar(new ExportadorCsv());
   assert.match(csv, /^﻿Código;Título/);
   const json = JSON.parse(await new RelatorioImoveis().gerar(new ExportadorJson(), { status: 'Disponível' }));
   assert.ok(json.registros.every((r) => r.Status === 'Disponível'));
   assert.equal(exportadorPara('pdf'), null);
-});
+}));
 
 test('Strategy: comissão por modalidade', () => {
   assert.equal(new ComissaoVenda(6).calcular(500000), 30000);
   assert.equal(new ComissaoLocacao(1).calcular(2000), 2000);
 });
 
-test('Strategy: canais de notificação', async () => {
+test('Strategy: canais de notificação', naDemo(async () => {
   const pessoa = { email: 'a@b.com', telefone: '(41) 9' };
   assert.equal(new CanalEmail().destinatario(pessoa), 'a@b.com');
   assert.equal(new CanalWhatsApp().destinatario(pessoa), '(41) 9');
   assert.ok(new CanalSms().formatar('x'.repeat(300)).length <= 160);
   assert.ok((await new NotificacaoRepositorio().listar()).every((n) => n.canal === 'whatsapp'));
-});
+}));
 
-test('Transação: erro no meio desfaz a gravação inteira', async () => {
+test('Transação: erro no meio desfaz a gravação inteira', naDemo(async () => {
   const db = Database.instancia();
   const antes = (await new ClienteRepositorio().listar()).length;
   await assert.rejects(db.transacao(async () => {
@@ -121,7 +128,7 @@ test('Transação: erro no meio desfaz a gravação inteira', async () => {
     throw new Error('falha proposital');
   }), /falha proposital/);
   assert.equal((await new ClienteRepositorio().listar()).length, antes);
-});
+}));
 
 // ---------- Login ----------
 
@@ -157,7 +164,7 @@ test('Login: bloqueio depois de 5 senhas erradas e sessão que expira', async ()
   assert.equal(await auth.usuarioDoToken(token), null);
 });
 
-test('Login: corretor desativado ou com senha trocada perde o acesso', async () => {
+test('Login: corretor desativado ou com senha trocada perde o acesso', naDemo(async () => {
   const repo = new CorretorRepositorio();
   const corretor = await repo.salvar({ nome: 'Teste Acesso', email: 'acesso@teste.com', creci: '99001-F/PR', senha: 'primeira123' });
   assert.equal(JSON.stringify(corretor).includes('senha'), false);
@@ -175,14 +182,14 @@ test('Login: corretor desativado ou com senha trocada perde o acesso', async () 
   await repo.salvar({ ativo: false }, corretor.id);
   assert.equal(await auth.usuarioDoToken(nova.token), null, 'desativar encerra a sessão');
   await assert.rejects(auth.entrar('acesso@teste.com', 'segunda123'), (e) => e instanceof ErroAplicacao && e.status === 403);
-});
+}));
 
-test('Criar conta: nasce aguardando aprovação e só entra depois de aprovada', async () => {
+test('Criar conta: nasce aguardando aprovação e só entra depois de aprovada', naDemo(async () => {
   const repo = new CorretorRepositorio();
   await assert.rejects(repo.criarConta({ nome: 'Sem Senha', email: 'semsenha@teste.com', creci: 'x' }),
-    (e) => e instanceof ErroValidacao && 'senha' in e.erros && 'creci' in e.erros);
+    (e) => e instanceof ErroValidacao && 'senha' in e.erros && 'creci' in e.erros && 'organizacaoId' in e.erros);
 
-  const novo = await repo.criarConta({ nome: 'Nova Corretora', email: 'nova@teste.com', telefone: '(41) 99999-1234', creci: '77001-F/PR', senha: 'novaconta1' });
+  const { corretor: novo } = await repo.criarConta({ nome: 'Nova Corretora', email: 'nova@teste.com', telefone: '(41) 99999-1234', creci: '77001-F/PR', senha: 'novaconta1', organizacaoId: demo });
   assert.equal(novo.ativo, false);
   assert.equal(novo.aguardandoAprovacao, true);
   assert.ok((await new NotificacaoRepositorio().listar()).some((n) => /Nova Corretora .* aguarda aprovação/.test(n.mensagem)), 'corretores ativos são avisados');
@@ -197,7 +204,7 @@ test('Criar conta: nasce aguardando aprovação e só entra depois de aprovada',
 
   await repo.salvar({ ativo: false }, novo.id); // desativar depois não volta a "aguardando"
   await assert.rejects(auth.entrar('nova@teste.com', 'novaconta1'), { status: 403, message: /desativado/ });
-});
+}));
 
 test('HTTP: a API exige login e o cookie de sessão é HttpOnly', async () => {
   const servidor = await criarAplicacao({ produto: 'lana-mayan', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
@@ -224,7 +231,7 @@ test('HTTP: a API exige login e o cookie de sessão é HttpOnly', async () => {
     assert.doesNotMatch(await corretores.text(), /senha|scrypt/, 'o hash nunca sai da API');
 
     // "Criar conta" é pública, mas não deixa o próprio cadastro entrar já ativo.
-    const cadastro = await fetch(`${base}/api/cadastro`, { method: 'POST', body: JSON.stringify({ nome: 'Pelo Site', email: 'site@teste.com', creci: '77002-F/PR', senha: 'pelosite1', ativo: true }) });
+    const cadastro = await fetch(`${base}/api/cadastro`, { method: 'POST', body: JSON.stringify({ nome: 'Pelo Site', email: 'site@teste.com', creci: '77002-F/PR', senha: 'pelosite1', ativo: true, administrador: true, organizacaoId: demo }) });
     assert.equal(cadastro.status, 201);
     const pelaApi = (await (await fetch(`${base}/api/corretores`, { headers })).json()).find((c) => c.email === 'site@teste.com');
     assert.equal(pelaApi.ativo, false);
@@ -256,7 +263,7 @@ test('Administrador: só ele aprova e gerencia corretores; o comum edita só o p
     assert.equal(carla.usuario.administrador, true);
     assert.equal(rafael.usuario.administrador, false);
 
-    await fetch(`${base}/api/cadastro`, { method: 'POST', body: JSON.stringify({ nome: 'Pendente Admin', email: 'pendente@teste.com', creci: '77003-F/PR', senha: 'pendente1' }) });
+    await fetch(`${base}/api/cadastro`, { method: 'POST', body: JSON.stringify({ nome: 'Pendente Admin', email: 'pendente@teste.com', creci: '77003-F/PR', senha: 'pendente1', organizacaoId: demo }) });
     const pendente = (await (await rafael.chamar('GET', '/api/corretores')).json()).find((c) => c.email === 'pendente@teste.com');
 
     // Corretor comum
@@ -279,17 +286,18 @@ test('Administrador: só ele aprova e gerencia corretores; o comum edita só o p
   }
 });
 
-test('Administrador: sem nenhum ativo, o corretor ativo mais antigo é promovido', async () => {
+test('Administrador: sem nenhum ativo, o corretor ativo mais antigo é promovido', naDemo(async () => {
   const repo = new CorretorRepositorio();
-  assert.equal(await garantirAdministrador(), null, 'já existe administrador');
+  assert.deepEqual(await garantirAdministrador(), [], 'toda organização já tem administrador');
   const [carla] = await repo.administradoresAtivos();
   await repo.salvar({ administrador: false }, carla.id);
-  const promovido = await garantirAdministrador();
+  const [promovido, ...outros] = await garantirAdministrador();
+  assert.equal(outros.length, 0, 'só a organização sem administrador é afetada');
   assert.equal(promovido.id, Math.min(...(await repo.listar()).filter((c) => c.ativo).map((c) => c.id)));
   assert.equal((await repo.administradoresAtivos()).length, 1);
-});
+}));
 
-test('Imóvel: novo nasce sem negócio e o status fechado combina com a finalidade', async () => {
+test('Imóvel: novo nasce sem negócio e o status fechado combina com a finalidade', naDemo(async () => {
   const repo = new ImovelRepositorio();
   const base = { titulo: 'Status Teste', tipo: 'Casa', finalidade: 'Venda', preco: 300000, cidade: 'Curitiba', uf: 'PR', proprietarioId: 1, corretorId: 1 };
   await assert.rejects(repo.salvar({ ...base, status: 'Vendido' }), (e) => e instanceof ErroValidacao && /imóvel novo/.test(e.erros.status));
@@ -299,4 +307,89 @@ test('Imóvel: novo nasce sem negócio e o status fechado combina com a finalida
   assert.equal(imovel.status, 'Disponível');
   await assert.rejects(repo.salvar({ status: 'Alugado' }, imovel.id), (e) => /só vale para imóvel para locação/.test(e.erros.status));
   assert.equal((await repo.salvar({ status: 'Vendido' }, imovel.id)).status, 'Vendido', 'na edição, fechar a venda é permitido');
+}));
+
+// ---------- Organizações ----------
+
+test('Organizações: o corretor autônomo cria a própria organização, entra na hora e só vê os próprios dados', async () => {
+  const servidor = await criarAplicacao({ produto: 'lana-mayan', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
+  await new Promise((r) => servidor.listen(0, r));
+  const base = `http://localhost:${servidor.address().port}`;
+  const cliente = (cookie) => async (metodo, caminho, corpo) => {
+    const r = await fetch(`${base}${caminho}`, { method: metodo, headers: cookie ? { cookie } : {}, body: corpo && JSON.stringify(corpo) });
+    return { status: r.status, cookie: r.headers.get('set-cookie')?.split(';')[0], corpo: r.status === 204 ? null : await r.json().catch(() => null) };
+  };
+  const anonimo = cliente(null);
+  try {
+    const login = await anonimo('POST', '/api/login', { email: 'carla@habitahub.demo', senha: SENHA_DEMO });
+    const carla = cliente(login.cookie);
+    assert.equal(login.corpo.organizacao.nome, 'Lana Mayan Negócios Imobiliários');
+
+    // Criar organização: já nasce ativo, administrador e logado.
+    const conta = { nome: 'Ana Autônoma', email: 'ana@autonoma.com', creci: '88001-F/PR', senha: 'autonoma1' };
+    const criada = await anonimo('POST', '/api/cadastro', { ...conta, novaOrganizacao: '  Ana   Imóveis ' });
+    assert.equal(criada.status, 201);
+    assert.equal(criada.corpo.organizacao.nome, 'Ana Imóveis');
+    assert.equal(criada.corpo.usuario.administrador, true);
+    assert.ok(criada.cookie, 'sai do cadastro com sessão');
+    const ana = cliente(criada.cookie);
+    const anaOrg = criada.corpo.organizacao.id;
+    assert.ok((await anonimo('GET', '/api/organizacoes')).corpo.some((o) => o.nome === 'Ana Imóveis'));
+
+    const repetida = await anonimo('POST', '/api/cadastro', { ...conta, email: 'outra@autonoma.com', creci: '88002-F/PR', novaOrganizacao: 'ana imóveis' });
+    assert.equal(repetida.status, 422);
+    assert.match(repetida.corpo.erros.novaOrganizacao, /Já existe/);
+    assert.equal((await anonimo('POST', '/api/cadastro', { ...conta, email: 'x@autonoma.com', creci: '88003-F/PR', novaOrganizacao: '' })).corpo.erros.novaOrganizacao, 'Nome da organização é obrigatório.');
+
+    // A organização nova começa vazia e não enxerga a Lana Mayan.
+    assert.deepEqual((await ana('GET', '/api/corretores')).corpo.map((c) => c.email), ['ana@autonoma.com']);
+    assert.deepEqual((await ana('GET', '/api/imoveis')).corpo, []);
+    assert.deepEqual((await ana('GET', '/api/clientes')).corpo, []);
+    assert.equal((await ana('GET', '/api/notificacoes')).corpo.length, 1, 'só a mensagem de boas-vindas');
+
+    const imovelDaLana = (await carla('GET', '/api/imoveis')).corpo[0];
+    const carlaId = login.corpo.id;
+    assert.equal((await ana('GET', `/api/imoveis/${imovelDaLana.id}`)).status, 404);
+    assert.equal((await ana('PUT', `/api/imoveis/${imovelDaLana.id}`, { preco: 1 })).status, 404);
+    assert.equal((await ana('DELETE', `/api/imoveis/${imovelDaLana.id}`)).status, 404);
+    assert.equal((await ana('PUT', `/api/corretores/${carlaId}`, { ativo: false })).status, 404, 'admin de uma organização não mexe na outra');
+
+    // CPF é único dentro da organização, não no sistema todo.
+    const joao = (await carla('GET', '/api/proprietarios')).corpo.find((p) => p.nome === 'João Pereira');
+    const proprietario = await ana('POST', '/api/proprietarios', { nome: 'João Pereira', cpf: joao.cpf, email: 'joao@ana.com' });
+    assert.equal(proprietario.status, 201);
+    assert.equal((await ana('POST', '/api/proprietarios', { nome: 'Repetido', cpf: joao.cpf, email: 'r@ana.com' })).corpo.erros.cpf, 'Já existe um cadastro com este valor.');
+
+    // Não dá para apontar para cadastros de outra organização.
+    const imovel = { titulo: 'Casa da Ana', tipo: 'Casa', finalidade: 'Venda', preco: 500000, cidade: 'Curitiba', uf: 'PR', proprietarioId: proprietario.corpo.id };
+    const alheio = await ana('POST', '/api/imoveis', { ...imovel, corretorId: carlaId });
+    assert.equal(alheio.status, 409);
+    assert.equal(alheio.corpo.mensagem, 'Corretor não encontrado.');
+    const proprio = await ana('POST', '/api/imoveis', { ...imovel, corretorId: criada.corpo.usuario.id });
+    assert.equal(proprio.corpo.codigo, 'HH-0001', 'cada organização tem a sua sequência de códigos');
+    const visitaAlheia = await ana('POST', '/api/visitas', { imovelId: proprio.corpo.id, clienteId: 1, corretorId: criada.corpo.usuario.id, dataHora: '2030-01-10T10:00' });
+    assert.equal(visitaAlheia.corpo.mensagem, 'Cliente não encontrado.');
+
+    // Pedido para entrar na organização da Ana: só ela recebe e só ela aprova.
+    const pedido = await anonimo('POST', '/api/cadastro', { nome: 'Beto Parceiro', email: 'beto@ana.com', creci: '88004-F/PR', senha: 'parceiro1', organizacaoId: anaOrg });
+    assert.equal(pedido.status, 201);
+    assert.equal(pedido.cookie, undefined, 'quem pede para entrar não recebe sessão');
+    const beto = (await ana('GET', '/api/corretores')).corpo.find((c) => c.email === 'beto@ana.com');
+    assert.equal(beto.aguardandoAprovacao, true);
+    assert.ok((await ana('GET', '/api/notificacoes')).corpo.some((n) => /Beto Parceiro .* aguarda aprovação/.test(n.mensagem)));
+    assert.ok(!(await carla('GET', '/api/notificacoes')).corpo.some((n) => /Beto Parceiro/.test(n.mensagem)));
+    assert.ok(!(await carla('GET', '/api/corretores')).corpo.some((c) => c.email === 'beto@ana.com'));
+    assert.equal((await carla('PUT', `/api/corretores/${beto.id}`, { ativo: true })).status, 404);
+    assert.equal((await ana('PUT', `/api/corretores/${beto.id}`, { ativo: true })).status, 200);
+    assert.equal((await anonimo('POST', '/api/login', { email: 'beto@ana.com', senha: 'parceiro1' })).corpo.organizacao.nome, 'Ana Imóveis');
+
+    assert.equal((await anonimo('POST', '/api/cadastro', { ...conta, email: 'y@x.com', creci: '88005-F/PR', organizacaoId: 999999 })).corpo.erros.organizacaoId,
+      'Escolha a organização em que você trabalha.');
+  } finally {
+    servidor.close();
+  }
+});
+
+test('Organizações: repositório fora de uma organização falha em vez de ver o banco inteiro', async () => {
+  await assert.rejects(new ClienteRepositorio().listar(), /Nenhuma organização ativa/);
 });

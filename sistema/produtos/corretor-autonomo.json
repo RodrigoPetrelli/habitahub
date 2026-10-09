@@ -2,6 +2,7 @@
   "id": "corretor-autonomo",
   "nome": "HabitaHub Essencial – Corretor Autônomo",
   "descricao": "Produto enxuto para corretor autônomo: só venda, sem módulo de propostas e notificação por e-mail.",
+  "organizacaoPadrao": "Carla Mendes Corretora de Imóveis",
   "features": {
     "visitas": true,
     "propostas": false,

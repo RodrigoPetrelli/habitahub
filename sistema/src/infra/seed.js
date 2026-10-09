@@ -1,5 +1,6 @@
 // Dados de demonstração, gravados pelos próprios repositórios (passam pelas
-// validações e geram notificações). Respeitam as features do produto ativo.
+// validações e geram notificações). Respeitam as features do produto ativo e
+// ficam numa organização própria (organizacaoPadrao, no JSON do produto).
 const Configuracao = require('./Configuracao');
 const CorretorRepositorio = require('../repositorios/CorretorRepositorio');
 const ProprietarioRepositorio = require('../repositorios/ProprietarioRepositorio');
@@ -7,7 +8,9 @@ const ClienteRepositorio = require('../repositorios/ClienteRepositorio');
 const ImovelRepositorio = require('../repositorios/ImovelRepositorio');
 const VisitaRepositorio = require('../repositorios/VisitaRepositorio');
 const PropostaRepositorio = require('../repositorios/PropostaRepositorio');
+const OrganizacaoRepositorio = require('../repositorios/OrganizacaoRepositorio');
 const Database = require('./Database');
+const { naOrganizacao } = require('./ContextoOrganizacao');
 
 // Senha das contas de demonstração (a mesma do protótipo).
 const SENHA_DEMO = 'demo1234';
@@ -29,10 +32,20 @@ function diasAPartirDeHoje(dias, hora) {
   return `${data.toISOString().slice(0, 10)}T${hora}`;
 }
 
-async function popularSeVazio() {
-  const corretores = new CorretorRepositorio();
-  if ((await corretores.listar()).length > 0) return false;
+// Nome da organização de demonstração (e da que adota os dados de bancos antigos).
+const nomeDaOrganizacaoPadrao = () => Configuracao.instancia().produto.organizacaoPadrao;
 
+async function popularSeVazio() {
+  const db = Database.instancia();
+  if ((await db.um('SELECT CAST(COUNT(*) AS INTEGER) AS n FROM corretores')).n > 0) return false;
+  return db.transacao(async () => {
+    const organizacao = await new OrganizacaoRepositorio().salvar({ nome: nomeDaOrganizacaoPadrao() });
+    return naOrganizacao(organizacao.id, popularOrganizacaoDemo);
+  });
+}
+
+async function popularOrganizacaoDemo() {
+  const corretores = new CorretorRepositorio();
   const config = Configuracao.instancia();
   const locacao = config.opcoes('modalidades').includes('Locação');
 
@@ -83,22 +96,45 @@ async function popularSeVazio() {
 // senha. Aqui eles recebem a senha de demonstração; outros corretores não são tocados.
 async function garantirAcessoDeDemonstracao() {
   const db = Database.instancia();
-  const semSenha = await db.todos("SELECT id FROM corretores WHERE senha_hash IS NULL AND email LIKE '%@habitahub.demo'");
-  const corretores = new CorretorRepositorio();
-  for (const { id } of semSenha) await corretores.salvar({ senha: SENHA_DEMO }, id);
+  const semSenha = await db.todos("SELECT id, organizacao_id FROM corretores WHERE senha_hash IS NULL AND email LIKE '%@habitahub.demo'");
+  for (const c of semSenha) await naOrganizacao(c.organizacao_id, () => new CorretorRepositorio().salvar({ senha: SENHA_DEMO }, c.id));
   return semSenha.length;
 }
 
-// Sem nenhum administrador ativo, ninguém aprovaria contas novas: o corretor
-// ativo mais antigo vira administrador (no banco de demonstração, a Carla).
-async function garantirAdministrador() {
-  const corretores = new CorretorRepositorio();
-  if ((await corretores.administradoresAtivos()).length) return null;
-  const [maisAntigo] = (await corretores.listar()).filter((c) => c.ativo).sort((a, b) => a.id - b.id);
-  if (!maisAntigo) return null;
-  await corretores.salvar({ administrador: true }, maisAntigo.id);
-  console.log(`Nenhum administrador ativo: ${maisAntigo.nome} (${maisAntigo.email}) virou administrador.`);
-  return maisAntigo;
+// Bancos criados antes das organizações têm registros sem organizacao_id: todos
+// passam a ser da organização padrão do produto (criada aqui, se ainda não existir).
+async function adotarDadosSemOrganizacao() {
+  const db = Database.instancia();
+  const orfaos = await Promise.all(Database.TABELAS_DA_ORGANIZACAO.map((t) => db.um(`SELECT id FROM ${t} WHERE organizacao_id IS NULL`)));
+  if (!orfaos.some(Boolean)) return null;
+  return db.transacao(async () => {
+    const organizacoes = new OrganizacaoRepositorio();
+    const nome = nomeDaOrganizacaoPadrao();
+    const organizacao = (await organizacoes.listar()).find((o) => o.nome === nome) || await organizacoes.salvar({ nome });
+    for (const tabela of Database.TABELAS_DA_ORGANIZACAO) {
+      await db.rodar(`UPDATE ${tabela} SET organizacao_id = ? WHERE organizacao_id IS NULL`, [organizacao.id]);
+    }
+    console.log(`Registros sem organização passaram para "${organizacao.nome}".`);
+    return organizacao;
+  });
 }
 
-module.exports = { popularSeVazio, garantirAcessoDeDemonstracao, garantirAdministrador, SENHA_DEMO };
+// Uma organização sem administrador ativo não teria quem aprovasse contas novas:
+// o corretor ativo mais antigo dela vira administrador (na demonstração, a Carla).
+// Devolve os corretores promovidos.
+async function garantirAdministrador() {
+  const promovidos = [];
+  for (const organizacao of await new OrganizacaoRepositorio().listar()) {
+    await naOrganizacao(organizacao.id, async () => {
+      const corretores = new CorretorRepositorio();
+      if ((await corretores.administradoresAtivos()).length) return;
+      const [maisAntigo] = (await corretores.listar()).filter((c) => c.ativo).sort((a, b) => a.id - b.id);
+      if (!maisAntigo) return;
+      promovidos.push(await corretores.salvar({ administrador: true }, maisAntigo.id));
+      console.log(`"${organizacao.nome}" estava sem administrador ativo: ${maisAntigo.nome} (${maisAntigo.email}) virou administrador.`);
+    });
+  }
+  return promovidos;
+}
+
+module.exports = { popularSeVazio, adotarDadosSemOrganizacao, garantirAcessoDeDemonstracao, garantirAdministrador, SENHA_DEMO };

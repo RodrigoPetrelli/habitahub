@@ -48,6 +48,11 @@ class PostgresDriver {
     return { alteradas: (await this.#pool.query(paraPostgres(sql), parametros)).rowCount };
   }
 
+  // O UNIQUE de coluna ganha o nome padrão <tabela>_<coluna>_key.
+  async removerUnico(tabela, coluna) {
+    await this.#pool.query(`ALTER TABLE ${tabela} DROP CONSTRAINT IF EXISTS ${tabela}_${coluna}_key`);
+  }
+
   async abrirTransacao() {
     const cliente = await this.#pool.connect();
     await cliente.query('BEGIN');

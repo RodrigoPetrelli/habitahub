@@ -41,7 +41,7 @@ class Autenticacao {
       throw new ErroAplicacao(LOGIN_INVALIDO, 401);
     }
     if (credenciais.aguardandoAprovacao) throw new ErroAplicacao('Seu cadastro está aguardando a aprovação de um administrador. Você vai receber um aviso quando o acesso for liberado.', 403);
-    if (!credenciais.ativo) throw new ErroAplicacao('Seu acesso está desativado. Fale com a administração da imobiliária.', 403);
+    if (!credenciais.ativo) throw new ErroAplicacao('Seu acesso está desativado. Fale com um administrador da sua organização.', 403);
 
     this.#falhas.delete(chave);
     const token = crypto.randomBytes(32).toString('base64url');
@@ -62,7 +62,7 @@ class Autenticacao {
       this.#sessoes.delete(token);
       return null;
     }
-    return { id: corretor.id, nome: corretor.nome, email: corretor.email, administrador: corretor.administrador };
+    return { id: corretor.id, nome: corretor.nome, email: corretor.email, administrador: corretor.administrador, organizacao: corretor.organizacao };
   }
 
   #verificarBloqueio(chave) {

@@ -5,11 +5,13 @@ const http = require('node:http');
 const Configuracao = require('./infra/Configuracao');
 const Database = require('./infra/Database');
 const { ErroAplicacao, ErroValidacao } = require('./infra/erros');
-const { popularSeVazio, garantirAcessoDeDemonstracao, garantirAdministrador } = require('./infra/seed');
+const { naOrganizacao } = require('./infra/ContextoOrganizacao');
+const { popularSeVazio, adotarDadosSemOrganizacao, garantirAcessoDeDemonstracao, garantirAdministrador } = require('./infra/seed');
 const { Autenticacao, DURACAO_SESSAO } = require('./seguranca/Autenticacao');
 const AutorizacaoCorretores = require('./seguranca/AutorizacaoCorretores');
 const Roteador = require('./http/Roteador');
 const CrudControlador = require('./http/CrudControlador');
+const OrganizacaoRepositorio = require('./repositorios/OrganizacaoRepositorio');
 const CorretorRepositorio = require('./repositorios/CorretorRepositorio');
 const ProprietarioRepositorio = require('./repositorios/ProprietarioRepositorio');
 const ClienteRepositorio = require('./repositorios/ClienteRepositorio');
@@ -25,7 +27,8 @@ let PUBLICO = path.join(__dirname, '..', 'public');
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 // Rotas abertas sem login. Todas as outras rotas /api/ exigem sessão.
-const ROTAS_PUBLICAS = new Set(['POST /api/login', 'POST /api/logout', 'GET /api/sessao', 'GET /api/produto', 'POST /api/cadastro']);
+// As rotas protegidas rodam dentro da organização do corretor logado.
+const ROTAS_PUBLICAS = new Set(['POST /api/login', 'POST /api/logout', 'GET /api/sessao', 'GET /api/produto', 'POST /api/cadastro', 'GET /api/organizacoes']);
 
 // "Criar conta" é aberta: no máximo 5 contas por IP a cada hora.
 const LIMITE_CADASTROS = 5;
@@ -69,12 +72,21 @@ function rotasDeAcesso(roteador, autenticacao) {
     autenticacao.sair(tokenDoCookie(req));
     return { status: 204, cabecalhos: { 'Set-Cookie': cookieDeSessao(req, '', 0) } };
   });
+  // Quem cria uma organização nova já é o administrador dela e sai daqui logado.
+  // Quem pede para entrar numa organização existente espera a aprovação.
   roteador.post('/api/cadastro', async (req) => {
     const registrar = verificarLimiteDeCadastros(req);
-    const novo = await new CorretorRepositorio().criarConta(req.corpo);
+    const { corretor, organizacao } = await new CorretorRepositorio().criarConta(req.corpo);
     registrar();
-    return { status: 201, corpo: { nome: novo.nome, email: novo.email } };
+    const corpo = { nome: corretor.nome, email: corretor.email, organizacao: { id: organizacao.id, nome: organizacao.nome }, aguardandoAprovacao: corretor.aguardandoAprovacao };
+    if (corretor.aguardandoAprovacao) return { status: 201, corpo };
+    const { token, usuario } = await autenticacao.entrar(corretor.email, req.corpo.senha);
+    return { status: 201, corpo: { ...corpo, usuario }, cabecalhos: { 'Set-Cookie': cookieDeSessao(req, token, DURACAO_SESSAO) } };
   });
+  // Lista pública, para o "Criar conta" escolher em qual organização pedir para entrar.
+  roteador.get('/api/organizacoes', async () => ({
+    status: 200, corpo: (await new OrganizacaoRepositorio().listar()).map(({ id, nome }) => ({ id, nome })),
+  }));
   roteador.get('/api/sessao', async (req) => {
     const usuario = await autenticacao.usuarioDoToken(tokenDoCookie(req));
     return usuario ? { status: 200, corpo: usuario } : { status: 401, corpo: { mensagem: 'Sem sessão.' } };
@@ -132,8 +144,9 @@ function montarRotas(autenticacao) {
 
 // Erros do banco (SQLite ou PostgreSQL) viram mensagens que a tela consegue mostrar.
 function traduzirErroBanco(e) {
-  const unicoSqlite = /UNIQUE constraint failed: \w+\.(\w+)/.exec(e.message);
-  const unicoPostgres = e.code === '23505' && /Key \((\w+)\)/.exec(e.detail || '');
+  // Em índices compostos (organizacao_id, cpf), o campo que a tela mostra é o último.
+  const unicoSqlite = /UNIQUE constraint failed: .*?(\w+)$/.exec(e.message);
+  const unicoPostgres = e.code === '23505' && /Key \((?:\w+, )*(\w+)\)/.exec(e.detail || '');
   const campo = (unicoSqlite || unicoPostgres || [])[1];
   if (campo) return new ErroValidacao({ [campo]: 'Já existe um cadastro com este valor.' });
   if (/FOREIGN KEY constraint failed/.test(e.message) || e.code === '23503') {
@@ -175,6 +188,7 @@ async function criarAplicacao({ produto, banco, front = 'public' }) {
   Configuracao.instancia().carregar(produto);
   await Database.instancia().conectar(banco);
   await popularSeVazio();
+  await adotarDadosSemOrganizacao();
   await garantirAcessoDeDemonstracao();
   await garantirAdministrador();
 
@@ -206,7 +220,10 @@ async function criarAplicacao({ produto, banco, front = 'public' }) {
 
       req.corpo = ['POST', 'PUT'].includes(req.method) ? await lerCorpo(req) : {};
       req.consulta = url.searchParams;
-      const r = await rota.handler(req, rota.params);
+      // Isolamento entre organizações: os repositórios só enxergam a organização do usuário.
+      const r = req.usuario
+        ? await naOrganizacao(req.usuario.organizacao.id, () => rota.handler(req, rota.params))
+        : await rota.handler(req, rota.params);
       if (r.bruto !== undefined) {
         res.writeHead(r.status, { 'Content-Type': r.tipo, 'Cache-Control': 'no-store', ...r.cabecalhos });
         res.end(r.bruto);

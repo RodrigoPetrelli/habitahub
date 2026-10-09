@@ -1,8 +1,18 @@
 -- HabitaHub – esquema do banco (SQLite, usado sem Docker e nos testes)
 -- Mantenha igual a schema.postgres.sql.
 
+CREATE TABLE IF NOT EXISTS organizacoes (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome       TEXT NOT NULL UNIQUE, -- imobiliária ou corretor autônomo
+  criado_em  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Todo cadastro pertence a uma organização (organizacao_id): cada uma só vê os seus.
+-- CPF e código do imóvel são únicos dentro da organização (índices em Database.#migrar).
+
 CREATE TABLE IF NOT EXISTS corretores (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
   nome       TEXT    NOT NULL,
   email      TEXT    NOT NULL UNIQUE,
   telefone   TEXT,
@@ -16,8 +26,9 @@ CREATE TABLE IF NOT EXISTS corretores (
 
 CREATE TABLE IF NOT EXISTS proprietarios (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
   nome       TEXT NOT NULL,
-  cpf        TEXT NOT NULL UNIQUE,
+  cpf        TEXT NOT NULL,
   email      TEXT NOT NULL,
   telefone   TEXT,
   criado_em  TEXT NOT NULL DEFAULT (datetime('now'))
@@ -25,8 +36,9 @@ CREATE TABLE IF NOT EXISTS proprietarios (
 
 CREATE TABLE IF NOT EXISTS clientes (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
   nome       TEXT NOT NULL,
-  cpf        TEXT NOT NULL UNIQUE,
+  cpf        TEXT NOT NULL,
   email      TEXT NOT NULL,
   telefone   TEXT,
   interesse  TEXT NOT NULL,
@@ -35,7 +47,8 @@ CREATE TABLE IF NOT EXISTS clientes (
 
 CREATE TABLE IF NOT EXISTS imoveis (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
-  codigo           TEXT    NOT NULL UNIQUE,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
+  codigo           TEXT    NOT NULL,
   titulo           TEXT    NOT NULL,
   tipo             TEXT    NOT NULL,
   finalidade       TEXT    NOT NULL,
@@ -56,6 +69,7 @@ CREATE TABLE IF NOT EXISTS imoveis (
 
 CREATE TABLE IF NOT EXISTS visitas (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
   imovel_id    INTEGER NOT NULL REFERENCES imoveis(id),
   cliente_id   INTEGER NOT NULL REFERENCES clientes(id),
   corretor_id  INTEGER NOT NULL REFERENCES corretores(id),
@@ -67,6 +81,7 @@ CREATE TABLE IF NOT EXISTS visitas (
 
 CREATE TABLE IF NOT EXISTS propostas (
   id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
   imovel_id             INTEGER NOT NULL REFERENCES imoveis(id),
   cliente_id            INTEGER NOT NULL REFERENCES clientes(id),
   valor                 REAL    NOT NULL,
@@ -78,6 +93,7 @@ CREATE TABLE IF NOT EXISTS propostas (
 
 CREATE TABLE IF NOT EXISTS notificacoes (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
   canal         TEXT NOT NULL,
   destinatario  TEXT NOT NULL,
   mensagem      TEXT NOT NULL,

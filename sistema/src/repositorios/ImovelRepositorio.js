@@ -5,6 +5,7 @@ const { Notificador } = require('../estrategias/notificacao');
 const { ErroRegraNegocio, ErroValidacao } = require('../infra/erros');
 const CorretorRepositorio = require('./CorretorRepositorio');
 const ProprietarioRepositorio = require('./ProprietarioRepositorio');
+const { organizacaoAtual } = require('../infra/ContextoOrganizacao');
 
 const brl = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -53,7 +54,8 @@ class ImovelRepositorio extends Repositorio {
   }
 
   async #proximoCodigo() {
-    const linha = await this.db.um("SELECT MAX(CAST(SUBSTR(codigo, 4) AS INTEGER)) AS n FROM imoveis WHERE codigo LIKE 'HH-%'");
+    // Cada organização tem a sua sequência de códigos (HH-0001, HH-0002, ...).
+    const linha = await this.db.um("SELECT MAX(CAST(SUBSTR(codigo, 4) AS INTEGER)) AS n FROM imoveis WHERE codigo LIKE 'HH-%' AND organizacao_id = ?", [organizacaoAtual()]);
     return `HH-${String((linha.n || 0) + 1).padStart(4, '0')}`;
   }
 }

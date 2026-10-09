@@ -33,6 +33,7 @@ class Configuracao {
     }
     const produto = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
     const erros = new ModeloDeFeatures().validar(produto.features);
+    if (!produto.organizacaoPadrao) erros.push('Informe "organizacaoPadrao": a organização dos dados de demonstração.');
     if (erros.length) {
       throw new Error(`Configuração inválida do produto "${idProduto}":\n- ${erros.join('\n- ')}`);
     }
