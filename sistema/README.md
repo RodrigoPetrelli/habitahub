@@ -56,7 +56,7 @@ O passo a passo e os números estão em [`COMPACTACAO.md`](COMPACTACAO.md). São
 
 | Técnica | Comando | Resultado |
 |---|---|---|
-| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 1.054 linhas em vez de cerca de 2.873: 63% menos código |
+| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 1.139 linhas em vez de cerca de 3.169: 64% menos código |
 | Minificação e empacotamento (esbuild) | `npm run build` | 10 módulos JS viram 1 arquivo, 38% menor. A biblioteca reutilizável `dist/lib/tela-crud.min.js` ficou 48% menor |
 
 O Docker serve a versão compactada (`dist/`).

@@ -41,15 +41,15 @@ const componentes = [
     linhasPorUso: 1,
   },
   {
-    nome: 'Repositorio – Template Method (7 repositórios)',
+    nome: 'Repositorio – Template Method (8 repositórios)',
     generico: ['src/repositorios/Repositorio.js'],
     usos: pasta('src/repositorios', (f) => f !== 'Repositorio.js'),
   },
   {
-    nome: 'Validador – Template Method (6 validadores)',
+    nome: 'Validador – Template Method (7 validadores)',
     generico: ['src/validacao/Validador.js'],
     usos: ['src/validacao/validadores.js'],
-    quantidadeUsos: 6,
+    quantidadeUsos: 7,
   },
   {
     nome: 'Relatorio – Template Method (3 relatórios)',

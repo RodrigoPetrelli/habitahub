@@ -50,10 +50,10 @@ Os números abaixo foram gerados pelos próprios scripts do projeto e podem ser 
 |---|---|---|---|---|---|---|
 | TelaCrud (6 telas de CRUD) | 168 | 6 | 176 | 1184 | 344 | 840 linhas (71%) |
 | CrudControlador (rotas REST dos 6 cadastros) | 44 | 6 | 6 | 270 | 50 | 220 linhas (81%) |
-| Repositorio – Template Method (7 repositórios) | 85 | 7 | 289 | 884 | 374 | 510 linhas (58%) |
-| Validador – Template Method (6 validadores) | 35 | 6 | 106 | 316 | 141 | 175 linhas (55%) |
+| Repositorio – Template Method (8 repositórios) | 98 | 8 | 346 | 1130 | 444 | 686 linhas (61%) |
+| Validador – Template Method (7 validadores) | 35 | 7 | 121 | 366 | 156 | 210 linhas (57%) |
 | Relatorio – Template Method (3 relatórios) | 37 | 3 | 108 | 219 | 145 | 74 linhas (34%) |
-| **Total** | | | | **2873** | **1054** | **1819 linhas (63%)** |
+| **Total** | | | | **3169** | **1139** | **2030 linhas (64%)** |
 
 Como ler a tabela:
 - **Linhas contadas:** só linhas de código, sem linhas vazias e sem comentários.
@@ -96,13 +96,13 @@ Como ler a tabela:
 
 | Parte | Arquivos antes → depois | Antes | Depois | Redução | gzip antes | gzip depois |
 |---|---|---|---|---|---|---|
-| JavaScript da aplicação | 10 → 1 | 46.0 KB | 28.6 KB | 38% | 17.1 KB | 9.8 KB |
-| CSS | 1 → 1 | 13.0 KB | 10.6 KB | 18% | 3.4 KB | 3.0 KB |
-| HTML | 1 → 1 | 1.3 KB | 1.2 KB | 9% | 0.7 KB | 0.6 KB |
-| Biblioteca TelaCrud | 2 → 1 | 14.8 KB | 7.7 KB | 48% | 5.7 KB | 3.3 KB |
+| JavaScript da aplicação | 10 → 1 | 49.5 KB | 30.7 KB | 38% | 18.2 KB | 10.4 KB |
+| CSS | 1 → 1 | 13.9 KB | 11.3 KB | 18% | 3.6 KB | 3.1 KB |
+| HTML | 1 → 1 | 1.3 KB | 1.0 KB | 23% | 0.7 KB | 0.5 KB |
+| Biblioteca TelaCrud | 2 → 1 | 15.0 KB | 7.7 KB | 48% | 5.7 KB | 3.3 KB |
 
 - **Requisições:** o navegador baixa 1 arquivo JavaScript em vez de 10.
-- **gzip:** as colunas mostram o tamanho comprimido. Com ele, o JavaScript transferido cai de 17.1 KB para 9.8 KB.
+- **gzip:** as colunas mostram o tamanho comprimido. Com ele, o JavaScript transferido cai de 18.2 KB para 10.4 KB.
 - **Por que a redução não é maior:** os textos da interface, em português, não podem ser encurtados, e isso limita o ganho da minificação.
 
 ---
@@ -111,5 +111,5 @@ Como ler a tabela:
 
 | Técnica | O que compacta | Ganho para o reuso |
 |---|---|---|
-| Extração de componentes genéricos | O código-fonte (63% menos linhas) | Telas e cadastros novos custam poucas linhas: basta configurar ou estender |
+| Extração de componentes genéricos | O código-fonte (64% menos linhas) | Telas e cadastros novos custam poucas linhas: basta configurar ou estender |
 | Minificação e empacotamento | O código distribuído (38% a 48% menos bytes) | O componente reutilizável vira uma biblioteca de um arquivo só, fácil de levar para outro produto da linha (LPS) |
