@@ -29,7 +29,7 @@ const { ErroValidacao, ErroRegraNegocio, ErroAplicacao } = require('../src/infra
 let demo; // id da organização de demonstração (Lana Mayan)
 
 before(async () => {
-  Configuracao.instancia().carregar('lana-mayan');
+  Configuracao.instancia().carregar('completo');
   await Database.instancia().conectar(process.env.HABITAHUB_BANCO_URL || ':memory:');
   await popularSeVazio();
   demo = (await Database.instancia().um('SELECT id FROM organizacoes ORDER BY id')).id;
@@ -207,7 +207,7 @@ test('Criar conta: nasce aguardando aprovação e só entra depois de aprovada',
 }));
 
 test('HTTP: a API exige login e o cookie de sessão é HttpOnly', async () => {
-  const servidor = await criarAplicacao({ produto: 'lana-mayan', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
+  const servidor = await criarAplicacao({ produto: 'completo', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
   await new Promise((r) => servidor.listen(0, r));
   const base = `http://localhost:${servidor.address().port}`;
   try {
@@ -222,7 +222,7 @@ test('HTTP: a API exige login e o cookie de sessão é HttpOnly', async () => {
     const login = await fetch(`${base}/api/login`, { method: 'POST', body: JSON.stringify({ email: 'carla@habitahub.demo', senha: SENHA_DEMO }) });
     assert.equal(login.status, 200);
     const cookie = login.headers.get('set-cookie');
-    assert.match(cookie, /^hh_sessao_lana-mayan=[\w-]+;.*HttpOnly.*SameSite=Strict/);
+    assert.match(cookie, /^hh_sessao_completo=[\w-]+;.*HttpOnly.*SameSite=Strict/);
     const headers = { cookie: cookie.split(';')[0] };
 
     assert.equal((await (await fetch(`${base}/api/sessao`, { headers })).json()).nome, 'Carla Mendes');
@@ -247,7 +247,7 @@ test('HTTP: a API exige login e o cookie de sessão é HttpOnly', async () => {
 // ---------- Perfil de administrador ----------
 
 test('Administrador: só ele aprova e gerencia corretores; o comum edita só o próprio cadastro', async () => {
-  const servidor = await criarAplicacao({ produto: 'lana-mayan', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
+  const servidor = await criarAplicacao({ produto: 'completo', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
   await new Promise((r) => servidor.listen(0, r));
   const base = `http://localhost:${servidor.address().port}`;
   const entrar = async (email) => {
@@ -312,7 +312,7 @@ test('Imóvel: novo nasce sem negócio e o status fechado combina com a finalida
 // ---------- Organizações ----------
 
 test('Organizações: o corretor autônomo cria a própria organização, entra na hora e só vê os próprios dados', async () => {
-  const servidor = await criarAplicacao({ produto: 'lana-mayan', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
+  const servidor = await criarAplicacao({ produto: 'completo', banco: process.env.HABITAHUB_BANCO_URL || ':memory:' });
   await new Promise((r) => servidor.listen(0, r));
   const base = `http://localhost:${servidor.address().port}`;
   const cliente = (cookie) => async (metodo, caminho, corpo) => {

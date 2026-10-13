@@ -50,7 +50,7 @@ function criarBancoAntigo() {
 
 test('Migração: dados antigos vão para a organização padrão e o CPF passa a ser único por organização', async () => {
   criarBancoAntigo();
-  const servidor = await criarAplicacao({ produto: 'lana-mayan', banco: arquivo });
+  const servidor = await criarAplicacao({ produto: 'completo', banco: arquivo });
   servidor.close();
   const db = Database.instancia();
 

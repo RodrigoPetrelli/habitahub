@@ -15,27 +15,27 @@ services:
     environment:
       POSTGRES_USER: habitahub
       POSTGRES_PASSWORD: habitahub
-      POSTGRES_DB: habitahub_lana_mayan
+      POSTGRES_DB: habitahub_completo
     ports:
       - "5433:5432"
     volumes:
       - dados-banco:/var/lib/postgresql/data
       - ./docker/postgres:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U habitahub -d habitahub_lana_mayan"]
+      test: ["CMD-SHELL", "pg_isready -U habitahub -d habitahub_completo"]
       interval: 5s
       timeout: 3s
       retries: 10
     restart: unless-stopped
 
   # Mesma imagem, dois produtos da linha (LPS): mudam o produto e o banco.
-  sistema-lana-mayan:
+  sistema-completo:
     build: ./sistema
     image: habitahub-sistema
-    container_name: habitahub-lana-mayan
+    container_name: habitahub-completo
     environment:
-      HABITAHUB_PRODUTO: lana-mayan
-      HABITAHUB_BANCO_URL: postgres://habitahub:habitahub@banco:5432/habitahub_lana_mayan
+      HABITAHUB_PRODUTO: completo
+      HABITAHUB_BANCO_URL: postgres://habitahub:habitahub@banco:5432/habitahub_completo
     ports:
       - "3200:3200"
     depends_on:
@@ -43,18 +43,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  sistema-corretor-autonomo:
+  sistema-essencial:
     image: habitahub-sistema
-    container_name: habitahub-corretor-autonomo
+    container_name: habitahub-essencial
     environment:
-      HABITAHUB_PRODUTO: corretor-autonomo
-      HABITAHUB_BANCO_URL: postgres://habitahub:habitahub@banco:5432/habitahub_corretor_autonomo
+      HABITAHUB_PRODUTO: essencial
+      HABITAHUB_BANCO_URL: postgres://habitahub:habitahub@banco:5432/habitahub_essencial
     ports:
       - "3201:3200"
     depends_on:
       banco:
         condition: service_healthy
-      sistema-lana-mayan:
+      sistema-completo:
         condition: service_started
     restart: unless-stopped
 

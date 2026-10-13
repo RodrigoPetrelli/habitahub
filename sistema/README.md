@@ -22,14 +22,14 @@ docker compose up -d --build
 
 | Container | O que é | Endereço |
 |---|---|---|
-| `habitahub-banco` | PostgreSQL 17, com um banco por produto: `habitahub_lana_mayan` e `habitahub_corretor_autonomo` | `localhost:5433` (usuário e senha `habitahub`) |
-| `habitahub-lana-mayan` | sistema, produto Lana Mayan | http://localhost:3200 |
-| `habitahub-corretor-autonomo` | sistema, produto Corretor Autônomo | http://localhost:3201 |
+| `habitahub-banco` | PostgreSQL 17, com um banco por produto: `habitahub_completo` e `habitahub_essencial` | `localhost:5433` (usuário e senha `habitahub`) |
+| `habitahub-completo` | sistema, produto HabitaHub Completo | http://localhost:3200 |
+| `habitahub-essencial` | sistema, produto HabitaHub Essencial | http://localhost:3201 |
 | `habitahub` | protótipo navegável | http://localhost:3100 |
 
 - **Persistência:** os dados ficam no volume `dados-banco`. O `docker compose down -v` apaga o volume, e o banco volta aos dados de demonstração.
 - **Criação dos bancos:** o script `docker/postgres/01-bancos.sql` cria o segundo banco na primeira inicialização.
-- **Acesso direto:** para consultar o banco, use `docker exec -it habitahub-banco psql -U habitahub -d habitahub_lana_mayan` ou um cliente como o DBeaver na porta 5433.
+- **Acesso direto:** para consultar o banco, use `docker exec -it habitahub-banco psql -U habitahub -d habitahub_completo` ou um cliente como o DBeaver na porta 5433.
 - **Credenciais:** servem só para desenvolvimento local.
 
 ### Sem Docker (SQLite local)
@@ -37,8 +37,8 @@ docker compose up -d --build
 ```bash
 cd sistema
 npm install
-npm start                 # produto "lana-mayan" em http://localhost:3200
-npm run start:autonomo    # produto "corretor-autonomo" (use --porta=3201 para rodar os dois)
+npm start                 # produto "completo" em http://localhost:3200
+npm run start:essencial   # produto "essencial" (use --porta=3201 para rodar os dois)
 npm test                  # 22 testes automatizados (SQLite em memória)
 npm run build             # compacta o front-end em dist/ (npm run start:dist já serve essa versão)
 npm run medir-reuso       # tabela de economia de código por reuso
@@ -171,7 +171,7 @@ Uma organização é uma imobiliária ou um corretor autônomo. Várias organiza
 - **Falha segura:** um repositório usado fora de uma organização lança erro, em vez de enxergar o banco inteiro.
 - **Referências:** imóvel, visita e proposta só aceitam corretor, proprietário, cliente e imóvel da mesma organização.
 - **Únicos por organização:** CPF de proprietário e de cliente e o código do imóvel. Duas imobiliárias podem atender o mesmo proprietário, e cada organização tem a sua sequência `HH-0001`, `HH-0002`... E-mail e CRECI do corretor continuam únicos no sistema todo, porque o login é feito pelo e-mail.
-- **Demonstração:** os dados de demonstração ficam na organização `organizacaoPadrao` do produto ("Lana Mayan Negócios Imobiliários" ou "Carla Mendes Corretora de Imóveis").
+- **Demonstração:** os dados de demonstração ficam na organização `organizacaoPadrao` do produto ("Lana Mayan Negócios Imobiliários" no Completo, "Carla Mendes Corretora de Imóveis" no Essencial).
 - **Bancos antigos:** ao iniciar, os bancos criados antes das organizações ganham a coluna `organizacao_id`, e todos os registros passam para a organização padrão do produto. O UNIQUE antigo do CPF e do código sai (no SQLite, a tabela é recriada com os mesmos dados).
 - **Relação com a LPS:** o produto (features) continua sendo escolhido por instalação. Todas as organizações de uma instalação usam as features daquele produto.
 
@@ -197,7 +197,7 @@ Parâmetros: % de comissão de venda, nº de aluguéis na locação, cor da marc
 
 **Produtos da linha** (`produtos/*.json`). Cada arquivo é uma configuração do modelo:
 
-| Feature | `lana-mayan` | `corretor-autonomo` |
+| Feature | `completo` | `essencial` |
 |---|---|---|
 | Visitas | ✔ | ✔ |
 | Propostas | ✔ | ✘ |
@@ -220,6 +220,7 @@ Parâmetros: % de comissão de venda, nº de aluguéis na locação, cor da marc
 - **Verificação:** antes de subir, `Configuracao.carregar()` valida o produto contra o modelo de features. Um produto com `"propostas": true` e `"visitas": false`, por exemplo, nem inicia.
 - **Novo produto:** basta criar um novo JSON em `produtos/`, sem alterar código. Além das features, o JSON informa `organizacaoPadrao`, a organização dos dados de demonstração.
 - **Nova organização:** não precisa de produto novo. Ela é criada pelo próprio corretor, em "Criar conta".
+- **Nomes dos produtos:** os produtos se chamam pelo conjunto de features (Completo, Essencial), não pelo cliente. Um mesmo produto atende várias organizações, como a imobiliária parceira Lana Mayan, que usa o Completo. Um produto por cliente seria uma cópia adaptada do sistema (*clone-and-own*), justamente o que a linha de produtos evita.
 
 ## Estrutura
 

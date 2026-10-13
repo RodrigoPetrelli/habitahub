@@ -20,4 +20,4 @@ Há um protótipo navegável em [`prototipo/`](prototipo/README.md) que cobre os
 docker compose up -d --build
 ```
 
-O protótipo fica disponível em http://localhost:3100, e os dois produtos do sistema ficam em http://localhost:3200 (Lana Mayan) e http://localhost:3201 (Corretor Autônomo). O banco PostgreSQL roda no container `habitahub-banco`, acessível pela porta 5433. Para parar, use `docker compose down`.
+O protótipo fica disponível em http://localhost:3100, e os dois produtos do sistema ficam em http://localhost:3200 (HabitaHub Completo) e http://localhost:3201 (HabitaHub Essencial). O banco PostgreSQL roda no container `habitahub-banco`, acessível pela porta 5433. Para parar, use `docker compose down`.

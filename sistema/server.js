@@ -1,5 +1,5 @@
 // HabitaHub – servidor. Escolha o produto da linha (LPS) com
-//   node server.js --produto=corretor-autonomo
+//   node server.js --produto=essencial
 // ou com a variável de ambiente HABITAHUB_PRODUTO.
 // Banco: HABITAHUB_BANCO_URL=postgres://... usa o PostgreSQL (container "banco");
 // sem ela, o sistema usa um arquivo SQLite em dados/<produto>.db.
@@ -10,7 +10,7 @@ const Database = require('./src/infra/Database');
 
 const argumento = (nome) => process.argv.find((a) => a.startsWith(`--${nome}=`))?.split('=')[1];
 
-const produto = argumento('produto') || process.env.HABITAHUB_PRODUTO || 'lana-mayan';
+const produto = argumento('produto') || process.env.HABITAHUB_PRODUTO || 'completo';
 const porta = Number(argumento('porta') || process.env.PORT || 3200);
 const front = argumento('front') || process.env.HABITAHUB_FRONT || 'public';
 const banco = process.env.HABITAHUB_BANCO_URL || process.env.HABITAHUB_BANCO || path.join(__dirname, 'dados', `${produto}.db`);
