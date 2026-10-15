@@ -1,11 +1,13 @@
 {
   "id": "essencial",
   "nome": "HabitaHub Essencial",
-  "descricao": "Produto enxuto, para corretores autônomos e imobiliárias pequenas: só venda, sem módulo de propostas e notificação por e-mail.",
+  "descricao": "Produto enxuto, para corretores autônomos e imobiliárias pequenas: só venda, visitas com avaliação, sem propostas nem contratos, e notificação por e-mail.",
   "organizacaoPadrao": "Carla Mendes Corretora de Imóveis",
   "features": {
     "visitas": true,
     "propostas": false,
+    "contratos": false,
+    "avaliacoes": true,
     "modalidades": ["Venda"],
     "notificacao": "email",
     "exportacao": ["csv"]

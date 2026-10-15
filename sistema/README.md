@@ -39,7 +39,7 @@ cd sistema
 npm install
 npm start                 # produto "completo" em http://localhost:3200
 npm run start:essencial   # produto "essencial" (use --porta=3201 para rodar os dois)
-npm test                  # 22 testes automatizados (SQLite em memória)
+npm test                  # 25 testes automatizados (SQLite em memória)
 npm run build             # compacta o front-end em dist/ (npm run start:dist já serve essa versão)
 npm run medir-reuso       # tabela de economia de código por reuso
 ```
@@ -56,8 +56,8 @@ O passo a passo e os números estão em [`COMPACTACAO.md`](COMPACTACAO.md). São
 
 | Técnica | Comando | Resultado |
 |---|---|---|
-| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 1.139 linhas em vez de cerca de 3.169: 64% menos código |
-| Minificação e empacotamento (esbuild) | `npm run build` | 10 módulos JS viram 1 arquivo, 38% menor. A biblioteca reutilizável `dist/lib/tela-crud.min.js` ficou 48% menor |
+| Compactação por reuso (extração de componentes genéricos) | `npm run medir-reuso` | 1.363 linhas em vez de cerca de 4.097: 67% menos código |
+| Minificação e empacotamento (esbuild) | `npm run build` | 12 módulos JS viram 1 arquivo, 37% menor. A biblioteca reutilizável `dist/lib/tela-crud.min.js` ficou 48% menor |
 
 O Docker serve a versão compactada (`dist/`).
 
@@ -77,12 +77,10 @@ O Docker serve a versão compactada (`dist/`).
 | `Imovel` | codigo, titulo, tipo, finalidade, preco, area, quartos, endereco, status, proprietarioId, corretorId | estaDisponivel, precoPorM2, reservar, concluirNegocio, inativar |
 | `Visita` | imovelId, clienteId, corretorId, dataHora, status, feedback | ehFutura, reagendar, registrarRealizacao, cancelar |
 | `Proposta` | imovelId, clienteId, valor, condicoes, status, valorContraproposta | aprovar, recusar, contrapropor, valorNegociado, percentualDoPreco, calcularComissao |
-| `Contrato` | numero, propostaId, imovelId, tipo, valor, inicio, termino, assinaturas | aPartirDaProposta, adicionarAssinatura, estaAssinadoPor, duracaoEmMeses |
+| `Contrato` | numero, propostaId, imovelId, tipo, valor, inicio, termino, assinaturas | aPartirDaProposta, adicionarAssinatura, assinadoPor, estaAssinadoPor, estaCompleto, status, duracaoEmMeses |
 | `Avaliacao` | visitaId, corretorId, nota, comentario, anonimo | ehPositiva, autorExibido, media |
 | `Notificacao` | canal, destinatario, mensagem, enviadoEm | resumo |
 | `Organizacao` | nome, criadoEm | deLinha, paraLinha (imobiliária ou corretor autônomo dono dos cadastros) |
-
-`Contrato` e `Avaliacao` ainda não têm tabela; elas entram nas próximas etapas.
 
 ### Padrões de projeto
 
@@ -90,8 +88,8 @@ O Docker serve a versão compactada (`dist/`).
 |---|---|---|---|
 | **Singleton** | 1. `Database` | `src/infra/Database.js` | Um único ponto de acesso ao banco (pool do PostgreSQL ou arquivo SQLite), compartilhado por todos os repositórios. Também controla as transações. |
 | | 2. `Configuracao` | `src/infra/Configuracao.js` | O produto da LPS ativo é decidido uma vez e consultado pelo sistema inteiro. |
-| **Template Method** | 1. `Validador.validar()` | `src/validacao/Validador.js` + `validadores.js` | O roteiro de validação (normalizar → obrigatórios → opções → regras) é comum aos 6 cadastros. Cada validador só implementa os passos que variam. |
-| | 2. `Repositorio.salvar()` / `excluir()` | `src/repositorios/Repositorio.js` + 7 subclasses | O SQL de INSERT, UPDATE, DELETE e SELECT é escrito uma vez e serve aos dois bancos. As subclasses usam os ganchos `antesDeSalvar`, `depoisDeSalvar`, `antesDeExcluir` e `paraResposta`. |
+| **Template Method** | 1. `Validador.validar()` | `src/validacao/Validador.js` + `validadores.js` | O roteiro de validação (normalizar → obrigatórios → opções → regras) é comum aos 8 cadastros e à organização. Cada validador só implementa os passos que variam. |
+| | 2. `Repositorio.salvar()` / `excluir()` | `src/repositorios/Repositorio.js` + 9 subclasses | O SQL de INSERT, UPDATE, DELETE e SELECT é escrito uma vez e serve aos dois bancos. As subclasses usam os ganchos `antesDeSalvar`, `depoisDeSalvar`, `antesDeExcluir` e `paraResposta`. |
 | | 3. `Relatorio.gerar()` | `src/relatorios/Relatorio.js` + `relatorios.js` | Roteiro fixo: buscar → filtrar → colunas → linhas → resumo → exportar. Os relatórios de imóveis, visitas e propostas só implementam os passos. |
 | **Strategy** (padrão novo) | 1. Comissão | `src/estrategias/comissao/` | `ComissaoVenda` (percentual) e `ComissaoLocacao` (n aluguéis). A `Proposta` calcula sem saber qual regra está em uso. |
 | | 2. Canal de notificação | `src/estrategias/notificacao/` | `CanalEmail`, `CanalWhatsApp` e `CanalSms`. Os repositórios chamam `Notificador.enviar()` sem conhecer o canal. |
@@ -103,7 +101,7 @@ Os padrões também se combinam: o Template Method `Relatorio.gerar()` entrega o
 
 ## Atividade 02 – CRUDs, banco e variabilidade
 
-### Telas de CRUD (6 telas, 2 por integrante)
+### Telas de CRUD (8 telas: 6 da atividade, 2 por integrante, mais Contratos e Avaliações)
 
 Todas as telas listam, criam, editam e excluem registros direto no banco. Elas reutilizam o componente `public/js/TelaCrud.js` no front-end e o `src/http/CrudControlador.js` no back-end. O visual segue o design system do protótipo (`prototipo/css/base.css`): menu lateral em grupos, painel com indicadores, cartões, selos de status, formulário em modal, confirmação de exclusão na própria página e busca na listagem.
 
@@ -115,6 +113,8 @@ Todas as telas listam, criam, editam e excluem registros direto no banco. Elas r
 | Luiz Eduardo Assi | Imóveis | `public/js/telas/imoveis.js` | `ImovelRepositorio` / `imoveis` |
 | Rodrigo Glir | Visitas | `public/js/telas/visitas.js` | `VisitaRepositorio` / `visitas` |
 | Rodrigo Glir | Propostas | `public/js/telas/propostas.js` | `PropostaRepositorio` / `propostas` |
+| (extra) | Contratos | `public/js/telas/contratos.js` | `ContratoRepositorio` / `contratos` |
+| (extra) | Avaliações | `public/js/telas/avaliacoes.js` | `AvaliacaoRepositorio` / `avaliacoes` |
 
 Regras de negócio que aparecem nas telas:
 - **Validação:** CPF com dígito verificador, e-mail, CRECI no formato `12345-F/PR`, UF e CEP.
@@ -122,6 +122,8 @@ Regras de negócio que aparecem nas telas:
 - **Exclusão:** é bloqueada quando o registro está em uso. Um proprietário com imóveis não pode ser excluído, por exemplo.
 - **Propostas:** uma proposta aprovada reserva o imóvel, e a tela mostra a comissão estimada.
 - **Visitas:** visita realizada exige feedback e envia esse feedback ao proprietário.
+- **Contratos:** só uma proposta aprovada gera contrato, e uma vez só. O número `CT-0001` é gerado ao salvar, e tipo, imóvel e valor vêm da proposta. Na locação, o término padrão é 30 meses depois do início. Quando cliente, proprietário e imobiliária assinam, o imóvel passa a "Vendido" ou "Alugado", e o contrato não pode mais ser alterado nem excluído. Uma proposta com contrato não pode ser excluída nem deixar de estar aprovada.
+- **Avaliações:** só uma visita realizada pode ser avaliada, uma vez, com nota de 1 a 5. O corretor da visita recebe a avaliação, e a tela Corretores mostra a média de cada um. O cliente pode pedir para não ser identificado.
 - **Notificações:** as notificações aparecem na tela "Notificações".
 
 ### Login
@@ -175,9 +177,9 @@ Uma organização é uma imobiliária ou um corretor autônomo. Várias organiza
 - **Bancos antigos:** ao iniciar, os bancos criados antes das organizações ganham a coluna `organizacao_id`, e todos os registros passam para a organização padrão do produto. O UNIQUE antigo do CPF e do código sai (no SQLite, a tabela é recriada com os mesmos dados).
 - **Relação com a LPS:** o produto (features) continua sendo escolhido por instalação. Todas as organizações de uma instalação usam as features daquele produto.
 
-### Banco de dados (8 tabelas)
+### Banco de dados (10 tabelas)
 
-O esquema está em `src/infra/schema.postgres.sql`, com uma cópia equivalente para SQLite em `schema.sqlite.sql`. As tabelas são `organizacoes`, `corretores`, `proprietarios`, `clientes` e `imoveis` (que referencia proprietário e corretor), `visitas` (que referencia imóvel, cliente e corretor), `propostas` (que referencia imóvel e cliente) e `notificacoes`. Todas, menos `organizacoes`, referenciam a organização dona do registro.
+O esquema está em `src/infra/schema.postgres.sql`, com uma cópia equivalente para SQLite em `schema.sqlite.sql`. As tabelas são `organizacoes`, `corretores`, `proprietarios`, `clientes` e `imoveis` (que referencia proprietário e corretor), `visitas` (que referencia imóvel, cliente e corretor), `propostas` (que referencia imóvel e cliente), `contratos` (que referencia proposta e imóvel), `avaliacoes` (que referencia visita e corretor) e `notificacoes`. Todas, menos `organizacoes`, referenciam a organização dona do registro.
 As chaves estrangeiras são verificadas nos dois bancos. O esquema é criado ao iniciar o sistema (`CREATE TABLE IF NOT EXISTS`), e a escolha do driver fica em `src/infra/bancos/`.
 
 ### Variabilidade (LPS)
@@ -188,7 +190,9 @@ As chaves estrangeiras são verificadas nos dois bancos. O esquema é criado ao 
 HabitaHub
 ├── Cadastros ................ obrigatória  (Corretores, Proprietários, Clientes, Imóveis)
 ├── Visitas .................. opcional
+│   └── Avaliações ........... opcional     (requer Visitas)
 ├── Propostas ................ opcional     (requer Visitas)
+│   └── Contratos ............ opcional     (requer Propostas)
 ├── Modalidades .............. grupo OR     (Venda | Locação – pelo menos uma)
 ├── Notificação .............. alternativa  (email | whatsapp | sms – exatamente uma)
 └── Exportação de relatórios . grupo OR     (csv | html | json – pelo menos uma)
@@ -200,13 +204,15 @@ Parâmetros: % de comissão de venda, nº de aluguéis na locação, cor da marc
 | Feature | `completo` | `essencial` |
 |---|---|---|
 | Visitas | ✔ | ✔ |
+| Avaliações | ✔ | ✔ |
 | Propostas | ✔ | ✘ |
+| Contratos | ✔ | ✘ |
 | Modalidades | Venda, Locação | Venda |
 | Notificação | WhatsApp | E-mail |
 | Exportação | CSV, HTML, JSON | CSV |
 | Comissão de venda | 6% | 5% |
 
-**Pontos de variação no código** (procure por `VP1`…`VP5`):
+**Pontos de variação no código** (procure por `VP1`…`VP7`):
 
 | VP | Feature | Mecanismo | Onde |
 |---|---|---|---|
@@ -215,6 +221,8 @@ Parâmetros: % de comissão de venda, nº de aluguéis na locação, cor da marc
 | VP3 | Modalidades (OR) | Os validadores e os selects das telas aceitam só as modalidades do produto | `validadores.js`, `telas/imoveis.js`, `telas/clientes.js` |
 | VP4 | Exportação (OR) | Strategy: `exportadorPara()` só entrega os formatos habilitados | `estrategias/exportacao/` |
 | VP5 | Notificação (alternativa) | Strategy: `Notificador.doProduto()` escolhe o canal | `estrategias/notificacao/` |
+| VP6 | Contratos (opcional, requer Propostas) | Mesmo mecanismo do VP1 | `src/app.js`, `public/js/app.js` |
+| VP7 | Avaliações (opcional, requer Visitas) | Mesmo mecanismo do VP1; a coluna de média na tela Corretores também some | `src/app.js`, `public/js/app.js`, `telas/corretores.js` |
 
 - **Tempo de vinculação:** na carga do sistema (*load time*), pelo parâmetro `--produto` ou pela variável `HABITAHUB_PRODUTO`.
 - **Verificação:** antes de subir, `Configuracao.carregar()` valida o produto contra o modelo de features. Um produto com `"propostas": true` e `"visitas": false`, por exemplo, nem inicia.

@@ -22,6 +22,9 @@ const ImovelRepositorio = require('../src/repositorios/ImovelRepositorio');
 const ProprietarioRepositorio = require('../src/repositorios/ProprietarioRepositorio');
 const PropostaRepositorio = require('../src/repositorios/PropostaRepositorio');
 const NotificacaoRepositorio = require('../src/repositorios/NotificacaoRepositorio');
+const VisitaRepositorio = require('../src/repositorios/VisitaRepositorio');
+const ContratoRepositorio = require('../src/repositorios/ContratoRepositorio');
+const AvaliacaoRepositorio = require('../src/repositorios/AvaliacaoRepositorio');
 const { ErroValidacao, ErroRegraNegocio, ErroAplicacao } = require('../src/infra/erros');
 
 // Sem HABITAHUB_BANCO_URL os testes usam SQLite em memória. Com ela, rodam
@@ -49,9 +52,10 @@ test('Singleton: sempre a mesma instância e construtor bloqueado', () => {
 
 test('Variabilidade: o modelo de features rejeita configurações inválidas', () => {
   const modelo = new ModeloDeFeatures();
-  const valida = { visitas: true, propostas: true, modalidades: ['Venda'], notificacao: 'email', exportacao: ['csv'] };
+  const valida = { visitas: true, propostas: true, contratos: true, avaliacoes: true, modalidades: ['Venda'], notificacao: 'email', exportacao: ['csv'] };
   assert.deepEqual(modelo.validar(valida), []);
   assert.match(modelo.validar({ ...valida, visitas: false }).join(), /requer "visitas"/);
+  assert.match(modelo.validar({ ...valida, propostas: false }).join(), /"contratos" requer "propostas"/);
   assert.match(modelo.validar({ ...valida, modalidades: [] }).join(), /pelo menos uma/);
   assert.match(modelo.validar({ ...valida, notificacao: 'pombo' }).join(), /exatamente uma/);
 });
@@ -393,3 +397,67 @@ test('Organizações: o corretor autônomo cria a própria organização, entra 
 test('Organizações: repositório fora de uma organização falha em vez de ver o banco inteiro', async () => {
   await assert.rejects(new ClienteRepositorio().listar(), /Nenhuma organização ativa/);
 });
+
+// ---------- Contratos e avaliações ----------
+
+const novoImovel = (finalidade, preco) => new ImovelRepositorio().salvar({
+  titulo: `Contrato ${finalidade}`, tipo: 'Casa', finalidade, preco, cidade: 'Curitiba', uf: 'PR', proprietarioId: 1, corretorId: 1,
+});
+
+test('Contrato: só de proposta aprovada, uma vez, e as três assinaturas fecham o negócio', naDemo(async () => {
+  const contratos = new ContratoRepositorio();
+  const propostas = new PropostaRepositorio();
+  const imovel = await novoImovel('Venda', 400000);
+  const proposta = await propostas.salvar({ imovelId: imovel.id, clienteId: 1, valor: 380000 });
+  await assert.rejects(contratos.salvar({ propostaId: proposta.id }), { message: 'Só propostas aprovadas geram contrato.' });
+
+  await propostas.salvar({ status: 'Aprovada' }, proposta.id);
+  const contrato = await contratos.salvar({ propostaId: proposta.id, assinadoCliente: true });
+  assert.match(contrato.numero, /^CT-\d{4}$/);
+  assert.deepEqual([contrato.tipo, contrato.valor, contrato.termino, contrato.status()], ['Venda', 380000, null, 'Aguardando assinaturas']);
+  await assert.rejects(contratos.salvar({ propostaId: proposta.id }), { message: 'Esta proposta já tem contrato.' });
+  await assert.rejects(propostas.excluir(proposta.id), { message: 'A proposta tem contrato. Exclua o contrato antes.' });
+  await assert.rejects(propostas.salvar({ status: 'Recusada' }, proposta.id), /precisa continuar aprovada/);
+
+  await contratos.salvar({ assinadoProprietario: true }, contrato.id);
+  assert.equal((await new ImovelRepositorio().buscarPorId(imovel.id)).status, 'Reservado', 'duas assinaturas ainda não fecham o negócio');
+  const assinado = await contratos.salvar({ assinadoImobiliaria: true }, contrato.id);
+  assert.equal(assinado.status(), 'Assinado');
+  assert.equal((await new ImovelRepositorio().buscarPorId(imovel.id)).status, 'Vendido');
+  assert.ok((await new NotificacaoRepositorio().listar()).some((n) => n.mensagem.includes(`${assinado.numero} foi assinado pelas três partes`)));
+  await assert.rejects(contratos.salvar({ assinadoCliente: false }, contrato.id), /não pode mais ser alterado/);
+  await assert.rejects(contratos.excluir(contrato.id), /não pode ser excluído/);
+}));
+
+test('Contrato: na locação, o término padrão é 30 meses depois do início', naDemo(async () => {
+  const imovel = await novoImovel('Locação', 2500);
+  const proposta = await new PropostaRepositorio().salvar({ imovelId: imovel.id, clienteId: 1, valor: 2400 });
+  await new PropostaRepositorio().salvar({ status: 'Aprovada' }, proposta.id);
+  const contrato = await new ContratoRepositorio().salvar({ propostaId: proposta.id, inicio: '2026-11-01' });
+  assert.equal(contrato.tipo, 'Locação');
+  assert.equal(contrato.duracaoEmMeses(), 30);
+  await assert.rejects(new ContratoRepositorio().salvar({ termino: '2026-10-01' }, contrato.id), (e) => /depois do início/.test(e.erros.termino));
+  await new ContratoRepositorio().excluir(contrato.id); // sem as três assinaturas, pode ser excluído
+}));
+
+test('Avaliação: só de visita realizada, uma por visita, e entra na média do corretor', naDemo(async () => {
+  const visitas = new VisitaRepositorio();
+  const avaliacoes = new AvaliacaoRepositorio();
+  const imovel = await novoImovel('Venda', 300000);
+  const agendada = await visitas.salvar({ imovelId: imovel.id, clienteId: 1, corretorId: 1, dataHora: '2026-12-01T10:00' });
+  const realizada = await visitas.salvar({ imovelId: imovel.id, clienteId: 1, corretorId: 1, dataHora: '2026-09-01T10:00' })
+    .then((v) => visitas.salvar({ status: 'Realizada', feedback: 'Gostou.' }, v.id));
+  await assert.rejects(avaliacoes.salvar({ visitaId: agendada.id, nota: 5 }), { message: 'Só visitas realizadas podem ser avaliadas.' });
+  await assert.rejects(avaliacoes.salvar({ visitaId: realizada.id, nota: 7 }), (e) => e instanceof ErroValidacao && 'nota' in e.erros);
+
+  const avaliacao = await avaliacoes.salvar({ visitaId: realizada.id, nota: '4', comentario: 'Atencioso.', anonimo: true });
+  assert.equal(avaliacao.corretorId, realizada.corretorId, 'o corretor avaliado é o da visita');
+  assert.equal((await avaliacoes.paraResposta(avaliacao)).autor, 'Cliente anônimo');
+  await assert.rejects(avaliacoes.salvar({ visitaId: realizada.id, nota: 5 }), { message: 'Esta visita já foi avaliada.' });
+  await assert.rejects(visitas.excluir(realizada.id), /tem avaliação/);
+
+  const corretores = new CorretorRepositorio();
+  const corretor = await corretores.paraResposta(await corretores.buscarPorId(realizada.corretorId));
+  assert.ok(corretor.totalAvaliacoes >= 1);
+  assert.ok((await new NotificacaoRepositorio().listar()).some((n) => /avaliação nota 4\/5/.test(n.mensagem)));
+}));

@@ -8,6 +8,8 @@ const ClienteRepositorio = require('../repositorios/ClienteRepositorio');
 const ImovelRepositorio = require('../repositorios/ImovelRepositorio');
 const VisitaRepositorio = require('../repositorios/VisitaRepositorio');
 const PropostaRepositorio = require('../repositorios/PropostaRepositorio');
+const ContratoRepositorio = require('../repositorios/ContratoRepositorio');
+const AvaliacaoRepositorio = require('../repositorios/AvaliacaoRepositorio');
 const OrganizacaoRepositorio = require('../repositorios/OrganizacaoRepositorio');
 const Database = require('./Database');
 const { naOrganizacao } = require('./ContextoOrganizacao');
@@ -83,11 +85,20 @@ async function popularOrganizacaoDemo() {
     const v = await visitas.salvar({ imovelId: batel.id, clienteId: mariana.id, corretorId: carla.id, dataHora: diasAPartirDeHoje(-3, '10:00') });
     await visitas.salvar({ status: 'Realizada', feedback: 'Cliente gostou da planta e da vista; achou o condomínio alto.' }, v.id);
     await visitas.salvar({ imovelId: studio.id, clienteId: lucas.id, corretorId: carla.id, dataHora: diasAPartirDeHoje(2, '15:30') });
+    if (config.temFeature('avaliacoes')) {
+      await new AvaliacaoRepositorio().salvar({ visitaId: v.id, nota: 5, comentario: 'Explicou tudo sobre o condomínio e o financiamento.' });
+    }
   }
 
   if (config.temFeature('propostas')) {
     const propostas = new PropostaRepositorio();
     await propostas.salvar({ imovelId: batel.id, clienteId: mariana.id, valor: 850000, condicoes: 'Financiamento de 70% pela Caixa.' });
+    if (config.temFeature('contratos')) {
+      // Proposta aprovada (reserva o studio) com contrato à espera da assinatura da imobiliária.
+      const aprovada = await propostas.salvar({ imovelId: studio.id, clienteId: lucas.id, valor: studio.preco * 0.95 });
+      await propostas.salvar({ status: 'Aprovada' }, aprovada.id);
+      await new ContratoRepositorio().salvar({ propostaId: aprovada.id, assinadoCliente: true, assinadoProprietario: true });
+    }
   }
   return true;
 }

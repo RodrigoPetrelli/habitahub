@@ -99,3 +99,32 @@ CREATE TABLE IF NOT EXISTS notificacoes (
   mensagem      TEXT NOT NULL,
   enviado_em    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Contrato gerado de uma proposta aprovada (feature opcional "contratos").
+-- Uma proposta gera no máximo um contrato; o número CT-0001 é único na organização.
+CREATE TABLE IF NOT EXISTS contratos (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
+  numero         TEXT    NOT NULL,
+  proposta_id    INTEGER NOT NULL UNIQUE REFERENCES propostas(id),
+  imovel_id      INTEGER NOT NULL REFERENCES imoveis(id),
+  tipo           TEXT    NOT NULL,
+  valor          REAL    NOT NULL,
+  inicio         TEXT    NOT NULL,  -- AAAA-MM-DD
+  termino        TEXT,              -- só na locação
+  assinaturas    TEXT    NOT NULL DEFAULT '[]', -- JSON: [{ papel, nome, data }]
+  criado_em      TEXT    NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (organizacao_id, numero)
+);
+
+-- Avaliação de uma visita realizada (feature opcional "avaliacoes"): uma por visita.
+CREATE TABLE IF NOT EXISTS avaliacoes (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  organizacao_id INTEGER NOT NULL REFERENCES organizacoes(id),
+  visita_id      INTEGER NOT NULL UNIQUE REFERENCES visitas(id),
+  corretor_id    INTEGER NOT NULL REFERENCES corretores(id),
+  nota           INTEGER NOT NULL CHECK (nota BETWEEN 1 AND 5),
+  comentario     TEXT,
+  anonimo        INTEGER NOT NULL DEFAULT 0,
+  criado_em      TEXT    NOT NULL DEFAULT (datetime('now'))
+);

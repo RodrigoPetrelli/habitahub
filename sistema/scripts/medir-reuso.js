@@ -29,27 +29,27 @@ const pasta = (dir, filtro = () => true) => fs.readdirSync(path.join(raiz, dir))
 // Componente genérico → arquivos que o reutilizam.
 const componentes = [
   {
-    nome: 'TelaCrud (6 telas de CRUD)',
+    nome: 'TelaCrud (8 telas de CRUD)',
     generico: ['public/js/TelaCrud.js'],
     usos: pasta('public/js/telas'),
   },
   {
-    nome: 'CrudControlador (rotas REST dos 6 cadastros)',
+    nome: 'CrudControlador (rotas REST dos 8 cadastros)',
     generico: ['src/http/CrudControlador.js'],
-    usos: null, // 6 usos de uma linha cada, em src/app.js
-    quantidadeUsos: 6,
+    usos: null, // 8 usos de uma linha cada, em src/app.js
+    quantidadeUsos: 8,
     linhasPorUso: 1,
   },
   {
-    nome: 'Repositorio – Template Method (8 repositórios)',
+    nome: 'Repositorio – Template Method (10 repositórios)',
     generico: ['src/repositorios/Repositorio.js'],
     usos: pasta('src/repositorios', (f) => f !== 'Repositorio.js'),
   },
   {
-    nome: 'Validador – Template Method (7 validadores)',
+    nome: 'Validador – Template Method (9 validadores)',
     generico: ['src/validacao/Validador.js'],
     usos: ['src/validacao/validadores.js'],
-    quantidadeUsos: 7,
+    quantidadeUsos: 9,
   },
   {
     nome: 'Relatorio – Template Method (3 relatórios)',

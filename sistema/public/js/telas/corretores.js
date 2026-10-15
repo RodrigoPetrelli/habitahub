@@ -27,6 +27,8 @@ export default {
     { rotulo: 'Telefone', valor: (c) => c.telefone },
     { rotulo: 'CRECI', valor: (c) => c.creci },
     { rotulo: 'Perfil', valor: (c) => (c.administrador ? etiqueta('Administrador', 'primary') : 'Corretor') },
+    { rotulo: 'Avaliação', feature: 'avaliacoes', classe: 'nowrap',
+      valor: (c) => (c.totalAvaliacoes ? `★ ${String(c.mediaAvaliacoes).replace('.', ',')} (${c.totalAvaliacoes})` : '—') },
     { rotulo: 'Situação', valor: (c) => {
       if (c.ativo) return etiqueta('Ativo', 'ok');
       return c.aguardandoAprovacao ? etiqueta('Aguardando aprovação', 'warn') : etiqueta('Inativo', 'danger');

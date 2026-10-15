@@ -127,6 +127,38 @@ class ValidadorProposta extends Validador {
   }
 }
 
+const dataValida = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(d).getTime());
+
+class ValidadorContrato extends Validador {
+  camposObrigatorios() {
+    return { propostaId: 'Proposta' }; // início em branco = hoje
+  }
+
+  validarRegras(dados, erros) {
+    if (dados.inicio && !dataValida(dados.inicio)) erros.inicio = 'Data inválida.';
+    if (dados.termino && !dataValida(dados.termino)) erros.termino = 'Data inválida.';
+    else if (dados.termino && dados.inicio && dados.termino <= dados.inicio) erros.termino = 'O término deve ser depois do início.';
+  }
+}
+
+class ValidadorAvaliacao extends Validador {
+  camposObrigatorios() {
+    return { visitaId: 'Visita', nota: 'Nota' };
+  }
+
+  opcoesPermitidas() {
+    return { nota: [1, 2, 3, 4, 5] };
+  }
+
+  normalizar(dados) {
+    super.normalizar(dados);
+    if (dados.nota !== undefined && dados.nota !== '') dados.nota = Number(dados.nota);
+    return dados;
+  }
+
+  validarRegras() {}
+}
+
 class ValidadorOrganizacao extends Validador {
   normalizar(dados) {
     super.normalizar(dados);
@@ -144,6 +176,6 @@ class ValidadorOrganizacao extends Validador {
 }
 
 module.exports = {
-  ValidadorOrganizacao, ValidadorCorretor, ValidadorProprietario, ValidadorCliente,
+  ValidadorOrganizacao, ValidadorContrato, ValidadorAvaliacao, ValidadorCorretor, ValidadorProprietario, ValidadorCliente,
   ValidadorImovel, ValidadorVisita, ValidadorProposta,
 };

@@ -31,6 +31,13 @@ class PropostaRepositorio extends Repositorio {
       throw new ErroRegraNegocio(`O imóvel ${imovel.codigo} está "${imovel.status}" e não aceita propostas.`);
     }
     if (proposta.status !== 'Contraproposta') proposta.valorContraproposta = null;
+    if (anterior?.status === 'Aprovada' && proposta.status !== 'Aprovada' && await this.contar('contratos', 'proposta_id = ?', [proposta.id]) > 0) {
+      throw new ErroRegraNegocio('A proposta já tem contrato e precisa continuar aprovada.');
+    }
+  }
+
+  async antesDeExcluir(proposta) {
+    await this.impedirSeUsado('contratos', 'proposta_id', proposta.id, 'A proposta tem contrato. Exclua o contrato antes.');
   }
 
   async depoisDeSalvar(proposta, anterior) {
@@ -57,9 +64,12 @@ class PropostaRepositorio extends Repositorio {
   // Acrescenta a comissão estimada, calculada pela estratégia da modalidade.
   async paraResposta(proposta) {
     const imovel = await new ImovelRepositorio().buscarPorId(proposta.imovelId);
+    const cliente = await new ClienteRepositorio().buscarPorId(proposta.clienteId);
     const estrategia = estrategiaComissaoPara(imovel?.finalidade);
     return {
       ...proposta,
+      // Rótulo usado no select da tela de Contratos.
+      resumo: `${imovel?.codigo} · ${cliente?.nome} · ${brl(proposta.valorNegociado())}`,
       valorNegociado: proposta.valorNegociado(),
       percentualDoPreco: imovel ? proposta.percentualDoPreco(imovel.preco) : null,
       comissaoEstimada: proposta.calcularComissao(estrategia),

@@ -1,6 +1,7 @@
 const Repositorio = require('./Repositorio');
 const OrganizacaoRepositorio = require('./OrganizacaoRepositorio');
 const Corretor = require('../modelos/Corretor');
+const Avaliacao = require('../modelos/Avaliacao');
 const { naOrganizacao } = require('../infra/ContextoOrganizacao');
 const { ValidadorCorretor } = require('../validacao/validadores');
 const { gerarHash } = require('../seguranca/senhas');
@@ -108,6 +109,12 @@ class CorretorRepositorio extends Repositorio {
       aguardandoAprovacao: Boolean(Number(l.aguardando_aprovacao)), senhaHash: l.senha_hash,
       organizacao: { id: l.organizacao_id, nome: l.organizacao_nome },
     } : null;
+  }
+
+  // Acrescenta a média das avaliações recebidas (feature "avaliacoes").
+  async paraResposta(corretor) {
+    const notas = await this.db.todos('SELECT nota FROM avaliacoes WHERE corretor_id = ?', [corretor.id]);
+    return { ...corretor, mediaAvaliacoes: Avaliacao.media(notas.map((n) => ({ nota: Number(n.nota) }))), totalAvaliacoes: notas.length };
   }
 
   async antesDeExcluir(corretor) {

@@ -50,6 +50,7 @@ const COR_DO_STATUS = {
   'Disponível': 'ok', 'Reservado': 'warn', 'Vendido': 'info', 'Alugado': 'info', 'Inativo': '',
   'Agendada': 'info', 'Realizada': 'ok', 'Cancelada': 'danger',
   'Em análise': 'warn', 'Aprovada': 'ok', 'Recusada': 'danger', 'Contraproposta': 'info',
+  'Aguardando assinaturas': 'warn', 'Assinado': 'ok',
 };
 
 // etiqueta('Ativo', 'ok') usa a cor dada; sem cor, procura pelo status.

@@ -8,8 +8,10 @@ import { api, el, avisar, abrirModal, confirmar } from './util.js';
 // definicao = {
 //   titulo, recurso, descricao,
 //   fontes:  { imoveis: (i) => rótulo }      cadastros usados em selects e colunas
-//   campos:  [{ nome, rotulo, tipo, opcoes, fonte, largura, dica, padrao, autocompletar, soAdministrador, soNaEdicao }]
-//   colunas: [{ rotulo, valor: (registro, tela) => texto ou nó, classe }]
+//   campos:  [{ nome, rotulo, tipo, opcoes, fonte, filtro, largura, dica, padrao, autocompletar, soAdministrador, soNaEdicao }]
+//            filtro: (item, registro, tela) => boolean limita as opções de um select com fonte
+//   colunas: [{ rotulo, valor: (registro, tela) => texto ou nó, classe, feature }]
+//            feature: a coluna só aparece se a feature do produto estiver ligada
 //   permissoes: { criar(usuario), editar(registro, usuario), excluir(registro, usuario) }  opcional;
 //               sem ela, tudo é permitido (o servidor confere de novo)
 //   aoAbrirFormulario(form, registro, tela)  gancho opcional
@@ -55,7 +57,8 @@ export class TelaCrud {
   }
 
   #renderizar() {
-    const { titulo, descricao, colunas } = this.def;
+    const { titulo, descricao } = this.def;
+    const colunas = this.def.colunas.filter((c) => !c.feature || this.produto.features[c.feature]);
     const linhas = this.registros.map((r) => el('tr', {},
       colunas.map((c) => el('td', { class: c.classe || null }, c.valor(r, this) ?? '')),
       el('td', { class: 'acoes-linha' },
@@ -96,22 +99,23 @@ export class TelaCrud {
     filtrar();
   }
 
-  #opcoesDo(campo) {
+  #opcoesDo(campo, registro) {
     if (campo.fonte) {
       const f = this.fontes[campo.fonte];
-      return f.lista.map((item) => ({ valor: item.id, rotulo: f.rotulo(item) }));
+      const itens = campo.filtro ? f.lista.filter((item) => campo.filtro(item, registro, this)) : f.lista;
+      return itens.map((item) => ({ valor: item.id, rotulo: f.rotulo(item) }));
     }
     const opcoes = typeof campo.opcoes === 'function' ? campo.opcoes(this.produto) : campo.opcoes;
     return opcoes.map((o) => ({ valor: o, rotulo: o }));
   }
 
-  #criarCampo(campo, valor) {
+  #criarCampo(campo, valor, registro) {
     const id = `campo-${campo.nome}`;
     let entrada;
     if (campo.tipo === 'select') {
       entrada = el('select', { id, name: campo.nome, class: 'input' },
         el('option', { value: '' }, 'Selecione…'),
-        this.#opcoesDo(campo).map((o) => el('option', { value: o.valor, selected: String(o.valor) === String(valor ?? '') }, o.rotulo)));
+        this.#opcoesDo(campo, registro).map((o) => el('option', { value: o.valor, selected: String(o.valor) === String(valor ?? '') }, o.rotulo)));
     } else if (campo.tipo === 'textarea') {
       entrada = el('textarea', { id, name: campo.nome, class: 'input' }, valor ?? '');
     } else if (campo.tipo === 'checkbox') {
@@ -150,7 +154,7 @@ export class TelaCrud {
     const { caixa: form } = abrirModal({
       titulo: novo ? `Novo cadastro – ${this.def.titulo}` : `Editar – ${this.def.titulo}`,
       largo: this.#camposVisiveis(novo).length > 6,
-      corpo: [erroGeral, el('div', { class: 'form-grid' }, this.#camposVisiveis(novo).map((c) => this.#criarCampo(c, novo ? c.padrao : registro[c.nome])))],
+      corpo: [erroGeral, el('div', { class: 'form-grid' }, this.#camposVisiveis(novo).map((c) => this.#criarCampo(c, novo ? c.padrao : registro[c.nome], registro)))],
       rodape: (fechar) => [
         el('button', { type: 'button', class: 'btn', onclick: fechar }, 'Cancelar'),
         el('button', { type: 'submit', class: 'btn btn-primary' }, novo ? 'Cadastrar' : 'Salvar alterações'),

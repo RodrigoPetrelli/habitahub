@@ -7,15 +7,17 @@ import clientes from './telas/clientes.js';
 import imoveis from './telas/imoveis.js';
 import visitas from './telas/visitas.js';
 import propostas from './telas/propostas.js';
+import contratos from './telas/contratos.js';
+import avaliacoes from './telas/avaliacoes.js';
 
-const TELAS = { corretores, proprietarios, clientes, imoveis, visitas, propostas };
+const TELAS = { corretores, proprietarios, clientes, imoveis, visitas, avaliacoes, propostas, contratos };
 const shell = document.getElementById('shell');
 const telaLogin = document.getElementById('tela-login');
 const conteudo = document.getElementById('conteudo');
 let produto;
 let usuario = null;
 
-// Pontos de variação VP1/VP2 no front-end: telas de features desligadas somem do menu.
+// Pontos de variação VP1, VP2, VP6 e VP7 no front-end: telas de features desligadas somem do menu.
 const telaAtiva = (tela) => !tela.feature || produto.features[tela.feature];
 
 // Menu lateral em grupos, como a sidebar do protótipo.
@@ -26,7 +28,7 @@ function montarMenu(rotaAtual) {
   document.getElementById('menu').replaceChildren(...[
     grupo('Imobiliária', [link('inicio', 'Painel')]),
     grupo('Cadastros', telas(['imoveis', 'proprietarios', 'clientes', 'corretores'])),
-    grupo('Atendimento', telas(['visitas', 'propostas'])),
+    grupo('Atendimento', telas(['visitas', 'avaliacoes', 'propostas', 'contratos'])),
     grupo('Acompanhamento', [link('relatorios', 'Relatórios'), link('notificacoes', 'Notificações')]),
   ].flat(2));
 }
@@ -93,7 +95,9 @@ async function telaInicio() {
         tabela(['Feature', 'Tipo', 'Neste produto'], [
           linhaFeature('Cadastros', 'obrigatória', etiqueta('incluída', 'ok')),
           linhaFeature('Visitas', 'opcional', onOff(f.visitas)),
+          linhaFeature('Avaliações', 'opcional (requer Visitas)', onOff(f.avaliacoes)),
           linhaFeature('Propostas', 'opcional (requer Visitas)', onOff(f.propostas)),
+          linhaFeature('Contratos', 'opcional (requer Propostas)', onOff(f.contratos)),
           linhaFeature('Modalidades de negócio', 'grupo OR', f.modalidades.join(', ')),
           linhaFeature('Canal de notificação', 'alternativa', f.notificacao),
           linhaFeature('Formatos de exportação', 'grupo OR', f.exportacao.join(', ').toUpperCase()),

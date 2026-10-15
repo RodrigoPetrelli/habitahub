@@ -3,7 +3,9 @@
 //   HabitaHub
 //   ├── Cadastros ................ obrigatória  (Corretores, Proprietários, Clientes, Imóveis)
 //   ├── Visitas .................. opcional
+//   │   └── Avaliações ........... opcional     (requer Visitas)
 //   ├── Propostas ................ opcional     (requer Visitas)
+//   │   └── Contratos ............ opcional     (requer Propostas)
 //   ├── Modalidades .............. grupo OR     (Venda | Locação, pelo menos uma)
 //   ├── Notificação .............. alternativa  (email | whatsapp | sms, exatamente uma)
 //   └── Exportação de relatórios . grupo OR     (csv | html | json, pelo menos uma)
@@ -12,7 +14,7 @@
 // abaixo verifica se a configuração respeita o modelo antes de o sistema subir.
 class ModeloDeFeatures {
   constructor() {
-    this.opcionais = ['visitas', 'propostas'];
+    this.opcionais = ['visitas', 'propostas', 'contratos', 'avaliacoes'];
     this.gruposOr = {
       modalidades: ['Venda', 'Locação'],
       exportacao: ['csv', 'html', 'json'],
@@ -21,7 +23,7 @@ class ModeloDeFeatures {
       notificacao: ['email', 'whatsapp', 'sms'],
     };
     // Restrições entre features: [feature, requer].
-    this.requer = [['propostas', 'visitas']];
+    this.requer = [['propostas', 'visitas'], ['contratos', 'propostas'], ['avaliacoes', 'visitas']];
   }
 
   validar(features) {

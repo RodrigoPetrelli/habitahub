@@ -39,6 +39,20 @@ class VisitaRepositorio extends Repositorio {
     if (anterior && anterior.status !== 'Agendada' && anterior.dataHora !== visita.dataHora) {
       throw new ErroRegraNegocio('Só é possível reagendar visitas com status "Agendada".');
     }
+    if (anterior?.status === 'Realizada' && visita.status !== 'Realizada' && await this.contar('avaliacoes', 'visita_id = ?', [visita.id]) > 0) {
+      throw new ErroRegraNegocio('A visita já foi avaliada e precisa continuar realizada.');
+    }
+  }
+
+  async antesDeExcluir(visita) {
+    await this.impedirSeUsado('avaliacoes', 'visita_id', visita.id, 'A visita tem avaliação. Exclua a avaliação antes.');
+  }
+
+  // Rótulo usado no select da tela de Avaliações.
+  async paraResposta(visita) {
+    const imovel = await new ImovelRepositorio().buscarPorId(visita.imovelId);
+    const cliente = await new ClienteRepositorio().buscarPorId(visita.clienteId);
+    return { ...visita, resumo: `${dataHoraBr(visita.dataHora)} · ${imovel?.codigo} · ${cliente?.nome}` };
   }
 
   async depoisDeSalvar(visita, anterior) {

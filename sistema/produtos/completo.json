@@ -1,11 +1,13 @@
 {
   "id": "completo",
   "nome": "HabitaHub Completo",
-  "descricao": "Produto completo, para imobiliárias com equipe: venda e locação, visitas, propostas e notificação por WhatsApp.",
+  "descricao": "Produto completo, para imobiliárias com equipe: venda e locação, visitas com avaliação, propostas, contratos e notificação por WhatsApp.",
   "organizacaoPadrao": "Lana Mayan Negócios Imobiliários",
   "features": {
     "visitas": true,
     "propostas": true,
+    "contratos": true,
+    "avaliacoes": true,
     "modalidades": ["Venda", "Locação"],
     "notificacao": "whatsapp",
     "exportacao": ["csv", "html", "json"]

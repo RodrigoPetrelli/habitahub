@@ -10,7 +10,7 @@ const PostgresDriver = require('./bancos/PostgresDriver');
 // (container "banco" no docker compose) ou o arquivo SQLite local.
 class Database {
   // Tabelas cujos registros pertencem a uma organização (coluna organizacao_id).
-  static TABELAS_DA_ORGANIZACAO = ['corretores', 'proprietarios', 'clientes', 'imoveis', 'visitas', 'propostas', 'notificacoes'];
+  static TABELAS_DA_ORGANIZACAO = ['corretores', 'proprietarios', 'clientes', 'imoveis', 'visitas', 'propostas', 'notificacoes', 'contratos', 'avaliacoes'];
 
   static #instancia = null;
   static #chave = Symbol('Database');

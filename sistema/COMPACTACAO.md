@@ -13,7 +13,7 @@ Os números abaixo foram gerados pelos próprios scripts do projeto e podem ser 
 
 ### Passo a passo
 
-1. **Identificar o que se repete.** As 6 telas de CRUD fazem a mesma coisa: listar em tabela, abrir um formulário, validar, salvar, excluir e mostrar erros. Os 6 cadastros também repetem a mesma sequência: o SQL de INSERT, UPDATE, DELETE e SELECT, a validação e as rotas REST.
+1. **Identificar o que se repete.** As 8 telas de CRUD fazem a mesma coisa: listar em tabela, abrir um formulário, validar, salvar, excluir e mostrar erros. Os 8 cadastros também repetem a mesma sequência: o SQL de INSERT, UPDATE, DELETE e SELECT, a validação e as rotas REST.
 2. **Separar o que muda do que é fixo.** O que muda em cada tela é o título, os campos e as colunas. O que muda em cada cadastro é a tabela, as regras e os ganchos.
 3. **Extrair o que é fixo para um componente genérico:**
    - `public/js/TelaCrud.js`: tela de CRUD configurável.
@@ -48,12 +48,12 @@ Os números abaixo foram gerados pelos próprios scripts do projeto e podem ser 
 
 | Componente genérico | Linhas do genérico | Usos | Linhas específicas | Sem reuso (estimado) | Com reuso | Economia |
 |---|---|---|---|---|---|---|
-| TelaCrud (6 telas de CRUD) | 168 | 6 | 176 | 1184 | 344 | 840 linhas (71%) |
-| CrudControlador (rotas REST dos 6 cadastros) | 44 | 6 | 6 | 270 | 50 | 220 linhas (81%) |
-| Repositorio – Template Method (8 repositórios) | 98 | 8 | 346 | 1130 | 444 | 686 linhas (61%) |
-| Validador – Template Method (7 validadores) | 35 | 7 | 121 | 366 | 156 | 210 linhas (57%) |
+| TelaCrud (8 telas de CRUD) | 170 | 8 | 234 | 1594 | 404 | 1190 linhas (75%) |
+| CrudControlador (rotas REST dos 8 cadastros) | 44 | 8 | 8 | 360 | 52 | 308 linhas (86%) |
+| Repositorio – Template Method (10 repositórios) | 98 | 10 | 483 | 1463 | 581 | 882 linhas (60%) |
+| Validador – Template Method (9 validadores) | 35 | 9 | 146 | 461 | 181 | 280 linhas (61%) |
 | Relatorio – Template Method (3 relatórios) | 37 | 3 | 108 | 219 | 145 | 74 linhas (34%) |
-| **Total** | | | | **3169** | **1139** | **2030 linhas (64%)** |
+| **Total** | | | | **4097** | **1363** | **2734 linhas (67%)** |
 
 Como ler a tabela:
 - **Linhas contadas:** só linhas de código, sem linhas vazias e sem comentários.
@@ -78,7 +78,7 @@ Como ler a tabela:
    - encurta nomes de variáveis locais;
    - simplifica expressões.
 3. **Gerar três pacotes:**
-   - `dist/js/app.min.js`: os 10 módulos JavaScript da aplicação viram 1 arquivo.
+   - `dist/js/app.min.js`: os 12 módulos JavaScript da aplicação viram 1 arquivo.
    - `dist/css/app.min.css` e `dist/index.html`: estilos e página compactados.
    - `dist/lib/tela-crud.min.js`: o **componente reutilizável** `TelaCrud` e os utilitários dele, em um arquivo só, com ponto de entrada em `public/js/biblioteca.js`. Qualquer produto da linha monta uma tela de CRUD com ele:
 
@@ -96,13 +96,13 @@ Como ler a tabela:
 
 | Parte | Arquivos antes → depois | Antes | Depois | Redução | gzip antes | gzip depois |
 |---|---|---|---|---|---|---|
-| JavaScript da aplicação | 10 → 1 | 49.5 KB | 30.7 KB | 38% | 18.2 KB | 10.4 KB |
+| JavaScript da aplicação | 12 → 1 | 53.5 KB | 33.7 KB | 37% | 20.1 KB | 11.3 KB |
 | CSS | 1 → 1 | 13.9 KB | 11.3 KB | 18% | 3.6 KB | 3.1 KB |
 | HTML | 1 → 1 | 1.3 KB | 1.0 KB | 23% | 0.7 KB | 0.5 KB |
-| Biblioteca TelaCrud | 2 → 1 | 15.0 KB | 7.7 KB | 48% | 5.7 KB | 3.3 KB |
+| Biblioteca TelaCrud | 2 → 1 | 15.2 KB | 7.9 KB | 48% | 5.8 KB | 3.4 KB |
 
-- **Requisições:** o navegador baixa 1 arquivo JavaScript em vez de 10.
-- **gzip:** as colunas mostram o tamanho comprimido. Com ele, o JavaScript transferido cai de 18.2 KB para 10.4 KB.
+- **Requisições:** o navegador baixa 1 arquivo JavaScript em vez de 12.
+- **gzip:** as colunas mostram o tamanho comprimido. Com ele, o JavaScript transferido cai de 20.1 KB para 11.3 KB.
 - **Por que a redução não é maior:** os textos da interface, em português, não podem ser encurtados, e isso limita o ganho da minificação.
 
 ---
@@ -111,5 +111,5 @@ Como ler a tabela:
 
 | Técnica | O que compacta | Ganho para o reuso |
 |---|---|---|
-| Extração de componentes genéricos | O código-fonte (64% menos linhas) | Telas e cadastros novos custam poucas linhas: basta configurar ou estender |
-| Minificação e empacotamento | O código distribuído (38% a 48% menos bytes) | O componente reutilizável vira uma biblioteca de um arquivo só, fácil de levar para outro produto da linha (LPS) |
+| Extração de componentes genéricos | O código-fonte (67% menos linhas) | Telas e cadastros novos custam poucas linhas: basta configurar ou estender |
+| Minificação e empacotamento | O código distribuído (37% a 48% menos bytes) | O componente reutilizável vira uma biblioteca de um arquivo só, fácil de levar para outro produto da linha (LPS) |

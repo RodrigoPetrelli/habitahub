@@ -19,6 +19,8 @@ const ImovelRepositorio = require('./repositorios/ImovelRepositorio');
 const VisitaRepositorio = require('./repositorios/VisitaRepositorio');
 const PropostaRepositorio = require('./repositorios/PropostaRepositorio');
 const NotificacaoRepositorio = require('./repositorios/NotificacaoRepositorio');
+const ContratoRepositorio = require('./repositorios/ContratoRepositorio');
+const AvaliacaoRepositorio = require('./repositorios/AvaliacaoRepositorio');
 const { RelatorioImoveis, RelatorioVisitas, RelatorioPropostas } = require('./relatorios/relatorios');
 const { exportadorPara } = require('./estrategias/exportacao');
 
@@ -118,6 +120,10 @@ function montarRotas(autenticacao) {
     recursos.propostas = PropostaRepositorio;
     relatorios.propostas = RelatorioPropostas;
   }
+  // Ponto de variação VP6 – feature opcional "contratos" (requer propostas)
+  if (config.temFeature('contratos')) recursos.contratos = ContratoRepositorio;
+  // Ponto de variação VP7 – feature opcional "avaliacoes" (requer visitas)
+  if (config.temFeature('avaliacoes')) recursos.avaliacoes = AvaliacaoRepositorio;
 
   // Só os corretores têm regras de permissão (perfil de administrador).
   const autorizacoes = { corretores: new AutorizacaoCorretores() };
